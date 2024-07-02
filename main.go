@@ -313,68 +313,48 @@ func shortestPath(w http.ResponseWriter, r *http.Request) {
 		Lon: roundFloat(data.DstLon, 6),
 	}
 
-	timeout := 2000 * time.Millisecond
-	client := httpclient.NewClient(httpclient.WithHTTPTimeout(timeout))
-
-	mapMatchBody := MapMatchingRequest{
-		Shape: []ShapeReq{
-			{
-				Lat:  from.Lat,
-				Lon:  from.Lon,
-				Type: "break",
-			},
-			{
-				Lat:  to.Lat,
-				Lon:  to.Lon,
-				Type: "via",
-			},
-		},
-		Costing:    "auto",
-		ShapeMatch: "map_snap",
-	}
-	bodyBytes, _ := json.Marshal(&mapMatchBody)
-	reader := bytes.NewReader(bodyBytes)
-
-	res, err := client.Post("http://localhost:8002/trace_attributes?json", reader, http.Header{})
-
-	// res, err := http.Post("http://localhost:8002/trace_attributes?json", "application/json", reader)
+	var err error
+	from.Lat, from.Lon, err = SnapLocationToRoadNetworkNode(from.Lat, from.Lon)
 	if err != nil {
 		render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return
 	}
-	var errorValhalla = &ValhallaErrorResp{}
-	if res.StatusCode == 400 {
-		err = json.NewDecoder(res.Body).Decode(errorValhalla)
-		if err != nil {
-			render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
-			return
-		}
-	}
-	fmt.Println(errorValhalla)
-	defer res.Body.Close()
-
-	matchedPoints := &MapMatchingResponse{}
-	err = json.NewDecoder(res.Body).Decode(matchedPoints)
+	to.Lat, to.Lon, err = SnapLocationToRoadNetworkNode(to.Lat, to.Lon)
 	if err != nil {
 		render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return
 	}
-
-	from.Lat = matchedPoints.MatchedPoints[0].Lat
-	from.Lon = matchedPoints.MatchedPoints[0].Lon
-	to.Lat = matchedPoints.MatchedPoints[1].Lat
-	to.Lon = matchedPoints.MatchedPoints[1].Lon
 
 	var fromSurakartaNode *alg.Node
 	var toSurakartaNode *alg.Node
 	for _, n := range surakartaGraph.Nodes {
-		if roundFloat(n.Lat, 4) == roundFloat(from.Lat, 4) && roundFloat(n.Lon, 4) == roundFloat(from.Lon, 4) {
-			fromSurakartaNode = n
+
+		for i := 6; i >= 4; i-- {
+			if roundFloat(n.Lat, uint(i)) == roundFloat(from.Lat, uint(i)) && roundFloat(n.Lon, uint(i)) == roundFloat(from.Lon, uint(i)) {
+				if fromSurakartaNode != nil &&
+					math.Abs(n.Lat-from.Lat) > math.Abs(fromSurakartaNode.Lat-from.Lat) &&
+					math.Abs(n.Lon-from.Lon) > math.Abs(fromSurakartaNode.Lon-from.Lon) {
+					// node graph (n) saat ini gak lebih dekat dg lokasi from
+					continue
+				}
+				fromSurakartaNode = n
+				break
+			}
 		}
 
-		if roundFloat(n.Lat, 4) == roundFloat(to.Lat, 4) && roundFloat(n.Lon, 4) == roundFloat(to.Lon, 4) {
-			toSurakartaNode = n
+		for i := 6; i >= 3; i-- {
+			if roundFloat(n.Lat, uint(i)) == roundFloat(to.Lat, uint(i)) && roundFloat(n.Lon, uint(i)) == roundFloat(to.Lon, uint(i)) {
+				if toSurakartaNode != nil &&
+					math.Abs(n.Lat-to.Lat) > math.Abs(toSurakartaNode.Lat-to.Lat) &&
+					math.Abs(n.Lon-to.Lon) > math.Abs(toSurakartaNode.Lon-to.Lon) {
+					// node graph (n) saat ini gak lebih dekat dg lokasi to
+					continue
+				}
+				toSurakartaNode = n
+				break
+			}
 		}
+
 	}
 
 	if fromSurakartaNode == nil || toSurakartaNode == nil {
@@ -388,17 +368,85 @@ func shortestPath(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, NewShortestPathResponse(p, dist, found))
 }
 
+func SnapLocationToRoadNetworkNode(lat, lon float64) (snappedLat, snappedLon float64, err error) {
+	timeout := 2000 * time.Millisecond
+	client := httpclient.NewClient(httpclient.WithHTTPTimeout(timeout))
+
+	mapMatchBody := MapMatchingRequest{
+		Shape: []ShapeReq{
+			{
+				Lat:  lat,
+				Lon:  lon,
+				Type: "break",
+			},
+			{
+				Lat:  lat + 0.0000000001,
+				Lon:  lon + 0.0000000001,
+				Type: "via",
+			},
+		},
+		Costing:    "auto",
+		ShapeMatch: "map_snap",
+	}
+	bodyBytes, _ := json.Marshal(&mapMatchBody)
+	reader := bytes.NewReader(bodyBytes)
+
+	res, err := client.Post("http://localhost:8002/trace_attributes?json", reader, http.Header{})
+
+	// res, err := http.Post("http://localhost:8002/trace_attributes?json", "application/json", reader)
+	if err != nil {
+		err = errors.New("internal server error")
+		return
+	}
+	var errorValhalla = &ValhallaErrorResp{}
+	if res.StatusCode == 400 {
+		err = json.NewDecoder(res.Body).Decode(errorValhalla)
+		if err != nil {
+			err = errors.New("internal server error")
+			return
+		}
+	}
+	fmt.Println(errorValhalla)
+	defer res.Body.Close()
+
+	matchedPoints := &MapMatchingResponse{}
+	err = json.NewDecoder(res.Body).Decode(matchedPoints)
+	if err != nil {
+		err = errors.New("internal server error")
+		return
+	}
+
+	snappedLat = matchedPoints.MatchedPoints[0].Lat
+	snappedLon = matchedPoints.MatchedPoints[0].Lon
+	return
+}
+
+type Coordinate struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
 type ShortestPathResponse struct {
-	Path  string  `json:"path"`
-	Dist  float64 `json:"distance"`
-	Found bool    `json:"found"`
+	Path  string       `json:"path"`
+	Dist  float64      `json:"distance"`
+	Found bool         `json:"found"`
+	Route []Coordinate `json:"route"`
 }
 
 func NewShortestPathResponse(p []alg.Pather, distance float64, found bool) *ShortestPathResponse {
+	var route []Coordinate = make([]Coordinate, 0)
+	for _, path := range p {
+		pathN := path.(*alg.Node)
+		route = append(route, Coordinate{
+			Lat: pathN.Lat,
+			Lon: pathN.Lon,
+		})
+	}
+
 	return &ShortestPathResponse{
 		Path:  alg.RenderPath(p),
 		Dist:  distance,
 		Found: found,
+		Route: route,
 	}
 }
 
