@@ -55,7 +55,7 @@ func (uc *NavigationService) ShortestPath(ctx context.Context, srcLat, srcLon fl
 		})
 	}
 
-	return alg.RenderPath(p), dist, found, route, nil
+	return alg.RenderPath(p), dist * 100, found, route, nil
 }
 
 type NodePoint struct {

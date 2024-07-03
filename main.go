@@ -115,6 +115,7 @@ func bikinGraphFromOpenstreetmap() {
 		n := ctr.nodeMap[nID]
 		fmt.Println(n.Lat, n.Lon)
 	}
+	
 	fmt.Println("edges di solo: " + fmt.Sprint(someWayCount))
 	for idx, way := range ways {
 		for i := 0; i < len(way.Nodes); i++ {
