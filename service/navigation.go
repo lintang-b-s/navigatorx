@@ -58,26 +58,9 @@ func (uc *NavigationService) ShortestPath(ctx context.Context, srcLat, srcLon fl
 	return alg.RenderPath(p), dist, found, route, nil
 }
 
-type ShapeReq struct {
-	Lat  float64 `json:"lat"`
-	Lon  float64 `json:"lon"`
-	Type string  `json:"type"`
-}
-
-// buat map matching valhalla
-type MapMatchingRequest struct {
-	Shape      []ShapeReq `json:"shape"`
-	Costing    string     `json:"costing"`
-	ShapeMatch string     `json:"shape_match"`
-}
-
-type MapMatchingResponse struct {
-	MatchedPoints []ShapeReq `json:"matched_points"`
-}
-
-type ValhallaErrorResp struct {
-	ErrorCode int    `json:"error_code"`
-	Error     string `json:"error"`
+type NodePoint struct {
+	Node *alg.Node
+	Dist float64
 }
 
 func SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNode *alg.Node, err error) {
@@ -96,15 +79,18 @@ func SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNode *alg.
 		secondNearestStPoint := street.Nodes[0] // node di jalan yang paling dekat kedua dg gps
 
 		// mencari 2 point dijalan yg paling dekat dg gps
-		streetNodes := []float64{}
+		streetNodes := []NodePoint{}
 		for _, node := range street.Nodes {
 			nodeLoc := alg.NewLocation(node.Lat, node.Lon)
-			streetNodes = append(streetNodes, alg.HaversineDistance(wantToSnapLoc, nodeLoc))
+			streetNodes = append(streetNodes, NodePoint{node, alg.HaversineDistance(wantToSnapLoc, nodeLoc)})
 		}
 
-		sort.Sort(sort.Float64Slice(streetNodes))
-		nearestStPoint = street.Nodes[0]
-		secondNearestStPoint = street.Nodes[1]
+		sort.Slice(streetNodes, func(i, j int) bool {
+			return streetNodes[i].Dist < streetNodes[j].Dist
+		})
+
+		nearestStPoint = streetNodes[0].Node
+		secondNearestStPoint = streetNodes[1].Node
 
 		// project point ke line segment jalan antara 2 point tadi
 		projection := alg.ProjectPointToLine(*nearestStPoint, *secondNearestStPoint, wantToSnap)
@@ -246,4 +232,26 @@ func SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNode *alg.
 // 	}
 
 // 	return alg.RenderPath(p), dist, found, route, nil
+// }
+
+// type ShapeReq struct {
+// 	Lat  float64 `json:"lat"`
+// 	Lon  float64 `json:"lon"`
+// 	Type string  `json:"type"`
+// }
+
+// // buat map matching valhalla
+// type MapMatchingRequest struct {
+// 	Shape      []ShapeReq `json:"shape"`
+// 	Costing    string     `json:"costing"`
+// 	ShapeMatch string     `json:"shape_match"`
+// }
+
+// type MapMatchingResponse struct {
+// 	MatchedPoints []ShapeReq `json:"matched_points"`
+// }
+
+// type ValhallaErrorResp struct {
+// 	ErrorCode int    `json:"error_code"`
+// 	Error     string `json:"error"`
 // }
