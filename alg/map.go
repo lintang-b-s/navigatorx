@@ -2,6 +2,7 @@ package alg
 
 import (
 	"lintang/coba_osm/util"
+	"sort"
 
 	"github.com/paulmach/osm"
 )
@@ -47,14 +48,10 @@ func InitGraph(ways []*osm.Way) {
 		sWay := SurakartaWay{
 			ID:    int64(way.ID),
 			Nodes: make([]*Node, 0),
-			Bound: Bound{
-				MinLat: way.Bounds.MinLat,
-				MaxLat: way.Bounds.MaxLat,
-				MinLon: way.Bounds.MinLon,
-				MaxLon: way.Bounds.MaxLon,
-			},
-			CenterLoc: []float64{(way.Bounds.MinLat + way.Bounds.MaxLat) / 2, (way.Bounds.MinLon + way.Bounds.MaxLon) / 2},
 		}
+
+		streetNodeLats := []float64{}
+		streetNodeLon := []float64{}
 
 		// creategraph node
 		for i := 0; i < len(way.Nodes)-1; i++ {
@@ -118,11 +115,23 @@ func InitGraph(ways []*osm.Way) {
 
 			// add node ke surakartaway
 			sWay.Nodes = append(sWay.Nodes, from)
+			// append node lat & node lon
+			streetNodeLats = append(streetNodeLats, from.Lat)
+			streetNodeLon = append(streetNodeLon, from.Lon)
 			if i == len(way.Nodes)-2 {
 				sWay.Nodes = append(sWay.Nodes, to)
+				streetNodeLats = append(streetNodeLats, to.Lat)
+				streetNodeLon = append(streetNodeLon, to.Lon)
 			}
-
 		}
+		sort.Sort(sort.Float64Slice(streetNodeLats))
+		sort.Sort(sort.Float64Slice(streetNodeLon))
+		sWay.Bound.MinLat = streetNodeLats[0]
+		sWay.Bound.MaxLat = streetNodeLats[len(streetNodeLats)-1]
+		sWay.Bound.MinLon = streetNodeLon[0]
+		sWay.Bound.MaxLon = streetNodeLon[len(streetNodeLon)-1]
+		sWay.CenterLoc = []float64{(sWay.Bound.MinLat + sWay.Bound.MaxLat) / 2, (sWay.Bound.MinLon + sWay.Bound.MaxLon) / 2}
+
 		SurakartaGraphData.Ways = append(SurakartaGraphData.Ways, sWay)
 	}
 }

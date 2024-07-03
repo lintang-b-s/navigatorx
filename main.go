@@ -10,6 +10,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/dhconnelly/rtreego"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/paulmach/osm"
@@ -24,6 +25,7 @@ type nodeMapContainer struct {
 func main() {
 	// f, err := os.Open("./central_java-latest.osm.pbf")
 	bikinGraphFromOpenstreetmap()
+	bikinRtreeStreetNetwork(alg.SurakartaGraphData.Ways)
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
@@ -36,8 +38,12 @@ func main() {
 }
 
 func bikinRtreeStreetNetwork(ways []alg.SurakartaWay) {
-	
-}	
+	for _, way := range ways {
+		alg.StRTree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]}, 
+			Wormhole: nil, 
+			Street: &way})
+	}
+}
 
 func bikinGraphFromOpenstreetmap() {
 	f, err := os.Open("./solo.osm.pbf")

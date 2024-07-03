@@ -6,13 +6,13 @@ import (
 
 var tol = 0.0001
 
-type StreetNode struct {
+type StreetRect struct {
 	Location rtreego.Point
 	Wormhole chan int
-	Street   Edge
+	Street   *SurakartaWay
 }
 
-func (s *StreetNode) Bounds() rtreego.Rect {
+func (s *StreetRect) Bounds() rtreego.Rect {
 	// define the bounds of s to be a rectangle centered at s.location
 	// with side lengths 2 * tol:
 	return s.Location.ToRect(tol)
