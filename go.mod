@@ -6,6 +6,7 @@ require github.com/paulmach/osm v0.8.0
 
 require (
 	github.com/ajg/form v1.5.1 // indirect
+	github.com/dhconnelly/rtreego v1.2.0 // indirect
 	github.com/gojek/heimdall/v7 v7.0.3 // indirect
 	github.com/gojektech/heimdall v5.0.2+incompatible // indirect
 	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect

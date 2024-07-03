@@ -3,13 +3,8 @@ package alg
 import "container/heap"
 
 type Pather interface {
-	// PathNeighbors returns the direct neighboring nodes of this node which
-	// can be pathed to.
 	PathNeighbors() []Pather
-	// PathNeighborCost calculates the exact movement cost to neighbor nodes.
 	PathNeighborCost(to Pather) float64
-	// PathEstimatedCost is a heuristic method for estimating movement costs
-	// between non-adjacent nodes.
 	PathEstimatedCost(to Pather) float64
 }
 
@@ -44,7 +39,6 @@ func SorthestPath(from, to Pather) (path []Pather, distance float64, found bool)
 	heap.Push(nq, fromNode)
 	for {
 		if nq.Len() == 0 {
-			// There's no path, return found false.
 			return
 		}
 		current := heap.Pop(nq).(*astarNode)
@@ -52,7 +46,6 @@ func SorthestPath(from, to Pather) (path []Pather, distance float64, found bool)
 		current.closed = true
 
 		if current == nm.get(to) {
-			// Found a path to the goal.
 			p := []Pather{}
 			curr := current
 			for curr != nil {
