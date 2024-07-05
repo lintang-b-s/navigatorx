@@ -173,7 +173,9 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 		sWay.Bound.MaxLat = streetNodeLats[len(streetNodeLats)-1]
 		sWay.Bound.MinLon = streetNodeLon[0]
 		sWay.Bound.MaxLon = streetNodeLon[len(streetNodeLon)-1]
-		sWay.CenterLoc = []float64{(sWay.Bound.MinLat + sWay.Bound.MaxLat) / 2, (sWay.Bound.MinLon + sWay.Bound.MaxLon) / 2}
+		// https://www.movable-type.co.uk/scripts/latlong.html
+		centerLat, centerLon := MidPoint(sWay.Bound.MinLat, sWay.Bound.MinLon, sWay.Bound.MaxLat, sWay.Bound.MaxLon)
+		sWay.CenterLoc = []float64{centerLat, centerLon}
 
 		surakartaWays = append(surakartaWays, sWay)
 	}
