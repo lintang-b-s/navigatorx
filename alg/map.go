@@ -43,6 +43,8 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 	surakartaWays := []SurakartaWay{}
 	for idx, way := range ways {
 
+		// namaJalan := ""
+
 		maxSpeed := 50.0
 
 		isOneWay := false // 0, 1
@@ -71,6 +73,10 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 					maxSpeed, _ = strconv.ParseFloat(tag.Value, 64)
 				}
 			}
+
+			// if tag.Key == "name" {
+			// 	namaJalan = tag.Value
+			// }
 		}
 		// path,cycleway, construction,steps,platform,bridleway,footway are not for cars
 		if maxSpeed == 50.0 {

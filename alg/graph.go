@@ -114,13 +114,13 @@ func RenderPath(path []Pather) string {
 func RoadTypeMaxSpeed(roadType string) float64 {
 	switch roadType {
 	case "motorway":
-		return 85
+		return 95
 	case "trunk":
 		return 85
 	case "primary":
-		return 70
+		return 75
 	case "secondary":
-		return 60
+		return 65
 	case "tertiary":
 		return 50
 	case "unclassified":
@@ -130,11 +130,11 @@ func RoadTypeMaxSpeed(roadType string) float64 {
 	case "service":
 		return 20
 	case "motorway_link":
-		return 85
+		return 90
 	case "trunk_link":
-		return 85
-	case "primary_link":
 		return 80
+	case "primary_link":
+		return 70
 	case "secondary_link":
 		return 60
 	case "tertiary_link":
