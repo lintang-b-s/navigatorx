@@ -4,9 +4,6 @@ import (
 	"context"
 	"lintang/coba_osm/alg"
 	"lintang/coba_osm/util"
-	"sort"
-
-	"github.com/dhconnelly/rtreego"
 )
 
 type NavigationService struct {
@@ -29,12 +26,12 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	}
 
 	var err error
-	fromSurakartaNode, err := SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
+	fromSurakartaNode, err := alg.SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
 	if err != nil {
 		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return "", 0, false, []alg.Coordinate{}, 0.0, nil
 	}
-	toSurakartaNode, err := SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
+	toSurakartaNode, err := alg.SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
 	if err != nil {
 		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return "", 0, false, []alg.Coordinate{}, 0.0, nil
@@ -61,56 +58,6 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	return alg.RenderPath(p), dist * 100, found, route, eta, nil
 }
 
-type NodePoint struct {
-	Node *alg.Node
-	Dist float64
-}
-
-func SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNode *alg.Node, err error) {
-	wantToSnap := rtreego.Point{lat, lon}
-	stNeighbors := alg.StRTree.NearestNeighbors(3, wantToSnap)
-
-	wantToSnapLoc := alg.NewLocation(wantToSnap[0], wantToSnap[1])
-
-	snappedStNode := &alg.Node{}
-	best := 100000000.0
-
-	// snap point ke  node jalan terdekat/posisi location seharusnya
-	for _, st := range stNeighbors {
-
-		street := st.(*alg.StreetRect).Street
-		nearestStPoint := street.Nodes[0]       // node di jalan yg paling dekat dg gps
-		secondNearestStPoint := street.Nodes[0] // node di jalan yang paling dekat kedua dg gps
-
-		// mencari 2 point dijalan yg paling dekat dg gps
-		streetNodes := []NodePoint{}
-		for _, node := range street.Nodes {
-			nodeLoc := alg.NewLocation(node.Lat, node.Lon)
-			streetNodes = append(streetNodes, NodePoint{node, alg.HaversineDistance(wantToSnapLoc, nodeLoc)})
-		}
-
-		sort.Slice(streetNodes, func(i, j int) bool {
-			return streetNodes[i].Dist < streetNodes[j].Dist
-		})
-
-		nearestStPoint = streetNodes[0].Node
-		secondNearestStPoint = streetNodes[1].Node
-
-		// project point ke line segment jalan antara 2 point tadi
-		projection := alg.ProjectPointToLine(*nearestStPoint, *secondNearestStPoint, wantToSnap)
-
-		projectionLoc := alg.NewLocation(projection.Lat, projection.Lon)
-
-		// ambil streetNode yang jarak antara hasil projection dg lokasi gps  paling kecil
-		if alg.HaversineDistance(wantToSnapLoc, projectionLoc) < best {
-			best = alg.HaversineDistance(wantToSnapLoc, projectionLoc)
-			snappedStNode = nearestStPoint
-		}
-	}
-
-	return snappedStNode, nil
-}
-
 func (uc *NavigationService) ShortestPath(ctx context.Context, srcLat, srcLon float64,
 	dstLat float64, dstLon float64) (string, float64, bool, []alg.Coordinate, error) {
 
@@ -124,12 +71,12 @@ func (uc *NavigationService) ShortestPath(ctx context.Context, srcLat, srcLon fl
 	}
 
 	var err error
-	fromSurakartaNode, err := SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
+	fromSurakartaNode, err := alg.SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
 	if err != nil {
 		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return "", 0, false, []alg.Coordinate{}, nil
 	}
-	toSurakartaNode, err := SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
+	toSurakartaNode, err := alg.SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
 	if err != nil {
 		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return "", 0, false, []alg.Coordinate{}, nil
