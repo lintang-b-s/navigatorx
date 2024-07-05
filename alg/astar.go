@@ -6,11 +6,14 @@ type Pather interface {
 	PathNeighbors() []Pather
 	PathNeighborCost(to Pather) float64
 	PathEstimatedCost(to Pather) float64
+	PathNeighborCostETA(to Pather) float64
+	PathEstimatedCostETA(to Pather) float64
 }
 
 type astarNode struct {
 	pather Pather
 	cost   float64
+	dist   float64 // tambah sendiri
 	rank   float64
 	parent *astarNode
 	open   bool
@@ -25,10 +28,64 @@ func (nm nodeMap) get(p Pather) *astarNode {
 
 	if !ok {
 		n = &astarNode{pather: p}
+		
 		nm[p] = n
 	}
 	return n
 }
+
+
+func SorthestPathETA(from, to Pather) (path []Pather, eta float64, found bool, dist float64) {
+	nm := nodeMap{}
+	nq := &priorityQueue{}
+	heap.Init(nq)
+	fromNode := nm.get(from)
+	fromNode.open = true
+	heap.Push(nq, fromNode)
+	for {
+		if nq.Len() == 0 {
+			return
+		}
+		current := heap.Pop(nq).(*astarNode)
+		current.open = false
+		current.closed = true
+
+		if current == nm.get(to) {
+			p := []Pather{}
+			curr := current
+			for curr != nil {
+				p = append(p, curr.pather)
+				curr = curr.parent
+			}
+			return p, current.cost, true, current.dist
+		}
+
+		for _, neighbor := range current.pather.PathNeighbors() {
+			cost := current.cost + current.pather.PathNeighborCostETA(neighbor)
+			dist := current.dist + current.pather.PathNeighborCost(neighbor)
+
+			neighborNode := nm.get(neighbor)
+			if cost < neighborNode.cost {
+				if neighborNode.open {
+					heap.Remove(nq, neighborNode.index)
+				}
+				neighborNode.open = false
+				neighborNode.closed = false
+			}
+			if !neighborNode.open && !neighborNode.closed {
+				neighborNode.cost = cost
+				neighborNode.dist = dist
+				neighborNode.open = true
+				neighborNode.rank = cost + neighbor.PathEstimatedCostETA(to)
+				neighborNode.parent = current
+				heap.Push(nq, neighborNode)
+			}
+
+		}
+	}
+
+}
+
 
 func SorthestPath(from, to Pather) (path []Pather, distance float64, found bool) {
 	nm := nodeMap{}
@@ -57,6 +114,7 @@ func SorthestPath(from, to Pather) (path []Pather, distance float64, found bool)
 
 		for _, neighbor := range current.pather.PathNeighbors() {
 			cost := current.cost + current.pather.PathNeighborCost(neighbor)
+
 			neighborNode := nm.get(neighbor)
 			if cost < neighborNode.cost {
 				if neighborNode.open {

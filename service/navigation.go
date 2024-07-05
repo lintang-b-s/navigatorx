@@ -16,6 +16,101 @@ func NewNavigationService() *NavigationService {
 	return &NavigationService{}
 }
 
+func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon float64,
+	dstLat float64, dstLon float64) (string, float64, bool, []alg.Coordinate, float64, error) {
+
+	from := &alg.Node{
+		Lat: util.RoundFloat(srcLat, 6),
+		Lon: util.RoundFloat(srcLon, 6),
+	}
+	to := &alg.Node{
+		Lat: util.RoundFloat(dstLat, 6),
+		Lon: util.RoundFloat(dstLon, 6),
+	}
+
+	var err error
+	fromSurakartaNode, err := SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
+	if err != nil {
+		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
+		return "", 0, false, []alg.Coordinate{}, 0.0, nil
+	}
+	toSurakartaNode, err := SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
+	if err != nil {
+		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
+		return "", 0, false, []alg.Coordinate{}, 0.0, nil
+	}
+
+	if fromSurakartaNode == nil || toSurakartaNode == nil {
+		// render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
+		return "", 0, false, []alg.Coordinate{}, 0.0, nil
+	}
+
+	p, eta, found, dist := alg.SorthestPathETA(fromSurakartaNode, toSurakartaNode)
+	// eta satuannya minute
+	// dist := 0
+	var route []alg.Coordinate = make([]alg.Coordinate, 0)
+	for i := range p {
+		pathN := p[len(p)-1-i].(*alg.Node)
+
+		route = append(route, alg.Coordinate{
+			Lat: pathN.Lat,
+			Lon: pathN.Lon,
+		})
+	}
+
+	return alg.RenderPath(p), dist * 100, found, route, eta, nil
+}
+
+type NodePoint struct {
+	Node *alg.Node
+	Dist float64
+}
+
+func SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNode *alg.Node, err error) {
+	wantToSnap := rtreego.Point{lat, lon}
+	stNeighbors := alg.StRTree.NearestNeighbors(3, wantToSnap)
+
+	wantToSnapLoc := alg.NewLocation(wantToSnap[0], wantToSnap[1])
+
+	snappedStNode := &alg.Node{}
+	best := 100000000.0
+
+	// snap point ke  node jalan terdekat/posisi location seharusnya
+	for _, st := range stNeighbors {
+
+		street := st.(*alg.StreetRect).Street
+		nearestStPoint := street.Nodes[0]       // node di jalan yg paling dekat dg gps
+		secondNearestStPoint := street.Nodes[0] // node di jalan yang paling dekat kedua dg gps
+
+		// mencari 2 point dijalan yg paling dekat dg gps
+		streetNodes := []NodePoint{}
+		for _, node := range street.Nodes {
+			nodeLoc := alg.NewLocation(node.Lat, node.Lon)
+			streetNodes = append(streetNodes, NodePoint{node, alg.HaversineDistance(wantToSnapLoc, nodeLoc)})
+		}
+
+		sort.Slice(streetNodes, func(i, j int) bool {
+			return streetNodes[i].Dist < streetNodes[j].Dist
+		})
+
+		nearestStPoint = streetNodes[0].Node
+		secondNearestStPoint = streetNodes[1].Node
+
+		// project point ke line segment jalan antara 2 point tadi
+		projection := alg.ProjectPointToLine(*nearestStPoint, *secondNearestStPoint, wantToSnap)
+
+		projectionLoc := alg.NewLocation(projection.Lat, projection.Lon)
+
+		// ambil streetNode yang jarak antara hasil projection dg lokasi gps  paling kecil
+		if alg.HaversineDistance(wantToSnapLoc, projectionLoc) < best {
+			best = alg.HaversineDistance(wantToSnapLoc, projectionLoc)
+			snappedStNode = nearestStPoint
+		}
+	}
+
+	return snappedStNode, nil
+}
+
 func (uc *NavigationService) ShortestPath(ctx context.Context, srcLat, srcLon float64,
 	dstLat float64, dstLon float64) (string, float64, bool, []alg.Coordinate, error) {
 
@@ -56,55 +151,6 @@ func (uc *NavigationService) ShortestPath(ctx context.Context, srcLat, srcLon fl
 	}
 
 	return alg.RenderPath(p), dist * 100, found, route, nil
-}
-
-type NodePoint struct {
-	Node *alg.Node
-	Dist float64
-}
-
-func SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNode *alg.Node, err error) {
-	wantToSnap := rtreego.Point{lat, lon}
-	stNeighbors := alg.StRTree.NearestNeighbors(3, wantToSnap)
-
-	wantToSnapLoc := alg.NewLocation(wantToSnap[0], wantToSnap[1])
-
-	snappedStNode := &alg.Node{}
-	best := 100000000.0
-
-	// snap point ke  node jalan terdekat/posisi location seharusnya
-	for _, st := range stNeighbors {
-		street := st.(*alg.StreetRect).Street
-		nearestStPoint := street.Nodes[0]       // node di jalan yg paling dekat dg gps
-		secondNearestStPoint := street.Nodes[0] // node di jalan yang paling dekat kedua dg gps
-
-		// mencari 2 point dijalan yg paling dekat dg gps
-		streetNodes := []NodePoint{}
-		for _, node := range street.Nodes {
-			nodeLoc := alg.NewLocation(node.Lat, node.Lon)
-			streetNodes = append(streetNodes, NodePoint{node, alg.HaversineDistance(wantToSnapLoc, nodeLoc)})
-		}
-
-		sort.Slice(streetNodes, func(i, j int) bool {
-			return streetNodes[i].Dist < streetNodes[j].Dist
-		})
-
-		nearestStPoint = streetNodes[0].Node
-		secondNearestStPoint = streetNodes[1].Node
-
-		// project point ke line segment jalan antara 2 point tadi
-		projection := alg.ProjectPointToLine(*nearestStPoint, *secondNearestStPoint, wantToSnap)
-
-		projectionLoc := alg.NewLocation(projection.Lat, projection.Lon)
-
-		// ambil streetNode yang jarak antara hasil projection dg lokasi gps  paling kecil
-		if alg.HaversineDistance(wantToSnapLoc, projectionLoc) < best {
-			best = alg.HaversineDistance(wantToSnapLoc, projectionLoc)
-			snappedStNode = nearestStPoint
-		}
-	}
-
-	return snappedStNode, nil
 }
 
 // func SnapLocationToRoadNetworkNode(lat, lon float64) (snappedLat, snappedLon float64, err error) {

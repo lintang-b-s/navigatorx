@@ -1,8 +1,14 @@
 package alg
 
 import (
+	"encoding/csv"
+	"fmt"
 	"lintang/coba_osm/util"
+	"log"
+	"os"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/paulmach/osm"
 )
@@ -10,15 +16,6 @@ import (
 type Coordinate struct {
 	Lat float64 `json:"lat"`
 	Lon float64 `json:"lon"`
-}
-
-var SurakartaNodeMap = make(map[int64]*Node)
-
-var SurakartaGraphData = SurakartaGraph{
-	Nodes:   make([]*Node, 0),
-	NodeIdx: make(map[int64]int64),
-	Counter: 0,
-	Ways:    make([]SurakartaWay, 0),
 }
 
 type Bound struct {
@@ -35,16 +32,60 @@ type SurakartaWay struct {
 	CenterLoc []float64 // [lat, lon]
 }
 
-type SurakartaGraph struct {
-	Nodes   []*Node
-	NodeIdx map[int64]int64
-	Counter int64
-	Ways    []SurakartaWay
-}
+// gak ada 1 way dengan multiple road type
 
-func InitGraph(ways []*osm.Way) {
+func InitGraph(ways []*osm.Way) []SurakartaWay {
+	var SurakartaNodeMap = make(map[int64]*Node)
 
-	for _, way := range ways {
+	oneWayTypesMap := make(map[string]int64)
+	twoWayTypesMap := make(map[string]int64)
+
+	surakartaWays := []SurakartaWay{}
+	for idx, way := range ways {
+
+		maxSpeed := 50.0
+
+		isOneWay := false // 0, 1
+		reversedOneWay := false
+
+		roadTypes := make(map[string]int)
+
+		roadType := ""
+
+		for _, tag := range way.Tags {
+			if tag.Key == "highway" {
+				twoWayTypesMap[tag.Key+"="+tag.Value] += 1
+				roadTypes[tag.Value] += 1
+				roadType = tag.Value
+			}
+			if strings.Contains(tag.Key, "oneway") && !strings.Contains(tag.Value, "no") {
+				oneWayTypesMap[tag.Key+"="+tag.Value] += 1
+				isOneWay = true
+				if strings.Contains(tag.Value, "-1") {
+					reversedOneWay = true
+				}
+			}
+			if strings.Contains(tag.Key, "maxspeed") {
+				_, err := strconv.ParseFloat(tag.Value, 64)
+				if err != nil {
+					maxSpeed, _ = strconv.ParseFloat(tag.Value, 64)
+				}
+			}
+		}
+		// path,cycleway, construction,steps,platform,bridleway,footway are not for cars
+		if maxSpeed == 50.0 {
+			maxSpeed = RoadTypeMaxSpeed(roadType)
+		}
+
+		if roadType == "path" || roadType == "cycleway" || roadType == "construction" || roadType == "steps" || roadType == "platform" ||
+			roadType == "bridleway" || roadType == "footway" {
+			continue
+		}
+
+		if idx%50000 == 0 {
+			fmt.Println("membuat graph dari openstreetmap way ke: " + fmt.Sprint(idx))
+
+		}
 		sWay := SurakartaWay{
 			ID:    int64(way.ID),
 			Nodes: make([]*Node, 0),
@@ -81,36 +122,38 @@ func InitGraph(ways []*osm.Way) {
 				SurakartaNodeMap[to.ID] = to
 			}
 
-			edge := Edge{
-				From: from,
-				To:   to,
-				Cost: EuclideanDistance(from, to),
-			}
-			from.Out_to = append(from.Out_to, edge)
-
-			reverseEdge := Edge{
-				From: to,
-				To:   from,
-				Cost: EuclideanDistance(from, to),
-			}
-
-			to.Out_to = append(to.Out_to, reverseEdge)
-
-			if _, ok := SurakartaGraphData.NodeIdx[from.ID]; ok {
-				fromIdx := SurakartaGraphData.NodeIdx[from.ID]
-				SurakartaGraphData.Nodes[fromIdx] = from
+			if isOneWay && !reversedOneWay {
+				edge := Edge{
+					From:     from,
+					To:       to,
+					Cost:     EuclideanDistance(from, to),
+					MaxSpeed: maxSpeed,
+				}
+				from.Out_to = append(from.Out_to, edge)
+			} else if isOneWay && reversedOneWay {
+				reverseEdge := Edge{
+					From:     to,
+					To:       from,
+					Cost:     EuclideanDistance(from, to),
+					MaxSpeed: maxSpeed,
+				}
+				to.Out_to = append(to.Out_to, reverseEdge)
 			} else {
-				SurakartaGraphData.NodeIdx[from.ID] = SurakartaGraphData.Counter // save index node saat ini
-				SurakartaGraphData.Nodes = append(SurakartaGraphData.Nodes, from)
-				SurakartaGraphData.Counter++
-			}
-			if _, ok := SurakartaGraphData.NodeIdx[to.ID]; ok {
-				toIdx := SurakartaGraphData.NodeIdx[to.ID]
-				SurakartaGraphData.Nodes[toIdx] = to
-			} else {
-				SurakartaGraphData.NodeIdx[to.ID] = SurakartaGraphData.Counter
-				SurakartaGraphData.Nodes = append(SurakartaGraphData.Nodes, to)
-				SurakartaGraphData.Counter++
+				edge := Edge{
+					From:     from,
+					To:       to,
+					Cost:     EuclideanDistance(from, to),
+					MaxSpeed: maxSpeed,
+				}
+				from.Out_to = append(from.Out_to, edge)
+
+				reverseEdge := Edge{
+					From:     to,
+					To:       from,
+					Cost:     EuclideanDistance(from, to),
+					MaxSpeed: maxSpeed,
+				}
+				to.Out_to = append(to.Out_to, reverseEdge)
 			}
 
 			// add node ke surakartaway
@@ -132,6 +175,37 @@ func InitGraph(ways []*osm.Way) {
 		sWay.Bound.MaxLon = streetNodeLon[len(streetNodeLon)-1]
 		sWay.CenterLoc = []float64{(sWay.Bound.MinLat + sWay.Bound.MaxLat) / 2, (sWay.Bound.MinLon + sWay.Bound.MaxLon) / 2}
 
-		SurakartaGraphData.Ways = append(SurakartaGraphData.Ways, sWay)
+		surakartaWays = append(surakartaWays, sWay)
 	}
+	clear(SurakartaNodeMap)
+
+	writeWayTypeToCsv(oneWayTypesMap, "onewayTypes.csv")
+	writeWayTypeToCsv(twoWayTypesMap, "twoWayTypes.csv")
+	return surakartaWays
+}
+
+func writeWayTypeToCsv(wayTypesMap map[string]int64, filename string) {
+	wayTypesArr := make([][]string, len(wayTypesMap)+1)
+
+	count := 0
+	idx := 0
+	for key, val := range wayTypesMap {
+		tipe := strings.Split(key, "=")
+		wayTypesArr[idx] = []string{tipe[0], tipe[1], strconv.FormatInt(val, 10)}
+		idx++
+		count += int(val)
+	}
+	wayTypesArr[idx] = []string{"total", fmt.Sprint(count)}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	writer.WriteAll(wayTypesArr)
 }

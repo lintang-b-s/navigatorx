@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"lintang/coba_osm/alg"
 	"lintang/coba_osm/router"
 	"lintang/coba_osm/service"
+	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
+
+	_ "net/http/pprof"
 
 	"github.com/dhconnelly/rtreego"
 	"github.com/go-chi/chi/v5"
@@ -24,11 +29,12 @@ type nodeMapContainer struct {
 
 func main() {
 	// f, err := os.Open("./central_java-latest.osm.pbf")
-	bikinGraphFromOpenstreetmap()
-	bikinRtreeStreetNetwork(alg.SurakartaGraphData.Ways)
+	surakartaWays := bikinGraphFromOpenstreetmap()
+	bikinRtreeStreetNetwork(surakartaWays)
+	surakartaWays = surakartaWays[len(surakartaWays)-1:]
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-
+	r.Mount("/debug", middleware.Profiler())
 	fmt.Println("server started at :3000")
 
 	navigatorSvc := service.NewNavigationService()
@@ -38,15 +44,21 @@ func main() {
 }
 
 func bikinRtreeStreetNetwork(ways []alg.SurakartaWay) {
-	for _, way := range ways {
-		alg.StRTree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]}, 
-			Wormhole: nil, 
-			Street: &way})
+	for idx, way := range ways {
+		if idx%50000 == 0 {
+			fmt.Println("membuat rtree entry untuk way ke: " + fmt.Sprint(idx))
+		}
+		alg.StRTree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
+			Wormhole: nil,
+			Street:   &way})
 	}
+
 }
 
-func bikinGraphFromOpenstreetmap() {
-	f, err := os.Open("./solo.osm.pbf")
+// gak bisa simpen rtreenya ke file binary (udah coba)
+
+func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
+	f, err := os.Open("./solo_semarang_jogja_hg_oneway.osm.pbf")
 
 	if err != nil {
 		panic(err)
@@ -69,22 +81,16 @@ func bikinGraphFromOpenstreetmap() {
 
 	someNodes := [][]float64{}
 
-	someNodeCount := 0
-
 	for scanner.Scan() {
 		o := scanner.Object()
 		// do something
 		tipe := o.ObjectID().Type()
 		typeSet[tipe] = typeSet[tipe] + 1
-		fmt.Println(count)
-		if tipe == osm.TypeNode {
-			ctr.mu.Lock()
-			ctr.nodeMap[o.(*osm.Node).ID] = o.(*osm.Node)
-			ctr.mu.Unlock()
+		if count%50000 == 0 {
+			fmt.Println("memproses openstreetmap way ke : " + fmt.Sprint(count))
 		}
-		if tipe == osm.TypeNode && someNodeCount < 5 {
-			someNodes = append(someNodes, []float64{o.(*osm.Node).Lat, o.(*osm.Node).Lon})
-			someNodeCount++
+		if tipe == osm.TypeNode {
+			ctr.nodeMap[o.(*osm.Node).ID] = o.(*osm.Node)
 		}
 
 		if tipe == osm.TypeWay {
@@ -115,7 +121,7 @@ func bikinGraphFromOpenstreetmap() {
 		n := ctr.nodeMap[nID]
 		fmt.Println(n.Lat, n.Lon)
 	}
-	
+
 	fmt.Println("edges di solo: " + fmt.Sprint(someWayCount))
 	for idx, way := range ways {
 		for i := 0; i < len(way.Nodes); i++ {
@@ -125,7 +131,55 @@ func bikinGraphFromOpenstreetmap() {
 		}
 	}
 
-	alg.InitGraph(ways)
+	surakartaWays := alg.InitGraph(ways)
+	NoteWayTypes(ways)
+	return surakartaWays
+}
+
+func NoteWayTypes(ways []*osm.Way) {
+
+	wayTypesMap := make(map[string]bool)
+
+	maspeeds := make(map[string]int)
+
+	for _, way := range ways {
+		for _, wayTag := range way.Tags {
+			if !wayTypesMap[wayTag.Key+"="+wayTag.Value] {
+				wayTypesMap[wayTag.Key+"="+wayTag.Value] = true
+				if strings.Contains(wayTag.Key, "maxspeed") {
+					maspeeds[wayTag.Value]++
+				}
+			}
+		}
+	}
+
+	wayTypesArr := make([][]string, len(wayTypesMap)+1+ len(maspeeds))
+
+	idx := 0
+	for key, _ := range wayTypesMap {
+		tipe := strings.Split(key, "=")
+		wayTypesArr[idx] = []string{tipe[0], tipe[1]}
+		idx++
+	}
+	wayTypesArr[idx] = []string{"total", fmt.Sprint(len(ways))}
+	idx++;
+	for key, val := range maspeeds {
+		wayTypesArr[idx] = []string{"maxspeed=" + key, fmt.Sprint(val)}
+		idx++
+	}
+
+	file, err := os.Create("wayTypes.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	writer.WriteAll(wayTypesArr)
+
 }
 
 /*

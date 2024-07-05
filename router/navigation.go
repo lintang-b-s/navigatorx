@@ -13,6 +13,8 @@ import (
 type NavigationService interface {
 	ShortestPath(ctx context.Context, srcLat, srcLon float64,
 		dstLat float64, dstLon float64) (string, float64, bool, []alg.Coordinate, error)
+	ShortestPathETA(ctx context.Context, srcLat, srcLon float64,
+		dstLat float64, dstLon float64) (string, float64, bool, []alg.Coordinate, float64, error)
 }
 
 type NavigationHandler struct {
@@ -24,7 +26,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 
 	r.Group(func(r chi.Router) {
 		r.Route("/api/navigations", func(r chi.Router) {
-			r.Post("/shortestPath", handler.shortestPath)
+			r.Post("/shortestPath", handler.shortestPathETA)
 		})
 	})
 }
@@ -46,27 +48,30 @@ func (s *SortestPathRequest) Bind(r *http.Request) error {
 type ShortestPathResponse struct {
 	Path  string           `json:"path"`
 	Dist  float64          `json:"distance"`
+	ETA   float64          `json:"ETA"`
 	Found bool             `json:"found"`
 	Route []alg.Coordinate `json:"route"`
 }
 
-func NewShortestPathResponse(path string, distance float64, route []alg.Coordinate, found bool) *ShortestPathResponse {
+func NewShortestPathResponse(path string, distance float64, eta float64, route []alg.Coordinate, found bool) *ShortestPathResponse {
 
 	return &ShortestPathResponse{
 		Path:  path,
 		Dist:  distance,
+		ETA:   eta,
 		Found: found,
 		Route: route,
 	}
 }
 
-func (h *NavigationHandler) shortestPath(w http.ResponseWriter, r *http.Request) {
+
+func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Request) {
 	data := &SortestPathRequest{}
 	if err := render.Bind(r, data); err != nil {
 		render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
-	p, dist, found, route, err := h.svc.ShortestPath(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
+	p, dist, found, route, eta, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
 	if err != nil {
 		render.Render(w, r, ErrInternalServerError(errors.New("internal server error")))
 		return
@@ -76,7 +81,7 @@ func (h *NavigationHandler) shortestPath(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, NewShortestPathResponse(p, dist, route, found))
+	render.JSON(w, r, NewShortestPathResponse(p, dist, eta, route, found))
 }
 
 type ErrResponse struct {
@@ -119,3 +124,23 @@ func ErrRender(err error) render.Renderer {
 		ErrorText:      err.Error(),
 	}
 }
+
+
+// func (h *NavigationHandler) shortestPath(w http.ResponseWriter, r *http.Request) {
+// 	data := &SortestPathRequest{}
+// 	if err := render.Bind(r, data); err != nil {
+// 		render.Render(w, r, ErrInvalidRequest(err))
+// 		return
+// 	}
+// 	p, dist, found, route, err := h.svc.ShortestPath(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
+// 	if err != nil {
+// 		render.Render(w, r, ErrInternalServerError(errors.New("internal server error")))
+// 		return
+// 	}
+// 	if !found {
+// 		render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
+// 		return
+// 	}
+// 	render.Status(r, http.StatusOK)
+// 	render.JSON(w, r, NewShortestPathResponse(p, dist, route, found))
+// }

@@ -1,4 +1,6 @@
 valhalla/
 solo.osm.pbf
-
-
+onewayTypes.csv
+twoWayTypes.csv
+wayTypes.csv
+solo_semarang_jogja_hg_oneway.osm.pbf
