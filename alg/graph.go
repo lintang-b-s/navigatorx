@@ -18,8 +18,9 @@ type Node struct {
 
 	Out_to []Edge
 
-	ID   int64
-	tags []string
+	ID         int64
+	tags       []string
+	StreetName string
 }
 
 func (n *Node) PathNeighbors() []Pather {
@@ -32,7 +33,9 @@ func (n *Node) PathNeighbors() []Pather {
 	return neighbors
 }
 
-
+func (n *Node) GetStreetName() string {
+	return n.StreetName
+}
 
 func (n *Node) PathNeighborCost(to Pather) float64 {
 
@@ -69,7 +72,7 @@ func (n *Node) PathNeighborCostETA(to Pather) float64 {
 
 	for _, e := range n.Out_to {
 		if Pather(e.To) == to {
-			maxSpeed := e.MaxSpeed * 1000 / 60 // m/min
+			maxSpeed := e.MaxSpeed * 1000 / 60  // m/min
 			return (e.Cost * 100000) / maxSpeed // minute
 		}
 	}
@@ -93,7 +96,7 @@ func (n *Node) PathEstimatedCostETA(to Pather) float64 {
 	absLonSq := absLon * absLon
 
 	// r := float64(absLat + absLon)
-	maxSpeed := 90.0 * 1000.0 / 60.0 // m/min
+	maxSpeed := 90.0 * 1000.0 / 60.0                      // m/min
 	r := math.Sqrt(absLatSq+absLonSq) * 100000 / maxSpeed // * 100000 -> meter
 	return r
 }
@@ -109,6 +112,17 @@ func RenderPath(path []Pather) string {
 	}
 	s = string(polyline.EncodeCoords(coords))
 	return s
+}
+
+func CalculateETA(from *Node, to *Node) float64 {
+	for _, e := range from.Out_to {
+		if e.To == to {
+			maxSpeed := e.MaxSpeed * 1000 / 60  // m/min
+			return (e.Cost * 100000) / maxSpeed // minute
+		}
+	}
+
+	return 100000000
 }
 
 func RoadTypeMaxSpeed(roadType string) float64 {

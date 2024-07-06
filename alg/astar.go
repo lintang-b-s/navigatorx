@@ -8,6 +8,7 @@ type Pather interface {
 	PathEstimatedCost(to Pather) float64
 	PathNeighborCostETA(to Pather) float64
 	PathEstimatedCostETA(to Pather) float64
+	GetStreetName() string
 }
 
 type astarNode struct {

@@ -43,7 +43,7 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 	surakartaWays := []SurakartaWay{}
 	for idx, way := range ways {
 
-		// namaJalan := ""
+		namaJalan := ""
 
 		maxSpeed := 50.0
 
@@ -74,9 +74,9 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				}
 			}
 
-			// if tag.Key == "name" {
-			// 	namaJalan = tag.Value
-			// }
+			if tag.Key == "name" {
+				namaJalan = tag.Value
+			}
 		}
 		// path,cycleway, construction,steps,platform,bridleway,footway are not for cars
 		if maxSpeed == 50.0 {
@@ -105,16 +105,18 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 			fromN := way.Nodes[i]
 
 			from := &Node{
-				Lat: util.RoundFloat(fromN.Lat, 6),
-				Lon: util.RoundFloat(fromN.Lon, 6),
-				ID:  int64(fromN.ID),
+				Lat:        util.TruncateFloat64(fromN.Lat, 6),
+				Lon:        util.TruncateFloat64(fromN.Lon, 6),
+				ID:         int64(fromN.ID),
+				StreetName: namaJalan,
 			}
 
 			toN := way.Nodes[i+1]
 			to := &Node{
-				Lat: util.RoundFloat(toN.Lat, 6),
-				Lon: util.RoundFloat(toN.Lon, 6),
-				ID:  int64(toN.ID),
+				Lat:        util.TruncateFloat64(toN.Lat, 6),
+				Lon:        util.TruncateFloat64(toN.Lon, 6),
+				ID:         int64(toN.ID),
+				StreetName: namaJalan,
 			}
 
 			if fromRealNode, ok := SurakartaNodeMap[from.ID]; ok {

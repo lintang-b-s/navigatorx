@@ -1,12 +1,17 @@
 package alg
 
-import "math"
+import (
+	"math"
+	"strconv"
+	"strings"
+)
 
 //	φ1,λ1 is the start point, φ2,λ2 the end point
 //	 	φ is latitude, λ is longitude
 //
 // https://www.movable-type.co.uk/scripts/latlong.html
 func Bearing(lat1, lon1, lat2, lon2 float64) float64 {
+
 	p1LatRad := degToRad(lat1)
 	p2LatRad := degToRad(lat2)
 
@@ -18,8 +23,8 @@ func Bearing(lat1, lon1, lat2, lon2 float64) float64 {
 
 	bearing := math.Mod((theta*180/math.Pi)+360, 360)
 	return bearing
-
 }
+
 
 func CalculateTurn(b1, b2 float64) float64 {
 	turn := b2 - b1
@@ -32,12 +37,12 @@ func CalculateTurn(b1, b2 float64) float64 {
 }
 
 func PredictTurn(turn float64) string {
-	if turn > 13 {
-		return "kanan"
-	} else if turn < -13 {
-		return "kiri"
+	if turn > 12 {
+		return string(KANAN)
+	} else if turn < -12 {
+		return string(KIRI)
 	}
-	return "lurus"
+	return string(LURUS)
 
 }
 
@@ -65,4 +70,53 @@ func degToRad(d float64) float64 {
 
 func radToDeg(r float64) float64 {
 	return 180.0 * r / math.Pi
+}
+
+// func GetMinimumPrecisionBearing(lat1, lon1 float64) int {
+// 	min1 := countDecimalPlaces(lat1)
+// 	min2 := countDecimalPlaces(lon1)
+
+// 	mins := []int{}
+// 	mins = append(mins, min1, min2)
+// 	min := 100000
+// 	for _, l := range mins {
+// 		if l < min {
+// 			min = l
+// 		}
+// 	}
+
+// 	return min
+// }
+
+// func GetMinimumPrecisionBearing(lat1, lon1 float64, lat2, lon2 float64) int {
+// 	min1 := countDecimalPlaces(lat1)
+// 	min2 := countDecimalPlaces(lon1)
+// 	min3 := countDecimalPlaces(lat2)
+// 	min4 := countDecimalPlaces(lon2)
+// 	mins := []int{}
+// 	mins = append(mins, min1, min2, min3, min4)
+// 	min := 100000
+// 	for _, l := range mins {
+// 		if l < min {
+// 			min = l
+// 		}
+// 	}
+
+// 	return min
+// }
+
+func countDecimalPlaces(value float64) int {
+	// Konversi nilai float64 menjadi string
+	strValue := strconv.FormatFloat(value, 'f', -1, 64)
+
+	// Pecah string dengan pemisah titik desimal
+	parts := strings.Split(strValue, ".")
+
+	// Jika tidak ada bagian desimal, return 0
+	if len(parts) < 2 {
+		return 0
+	}
+
+	// Panjang bagian desimal adalah jumlah digit di belakang koma
+	return len(parts[1])
 }
