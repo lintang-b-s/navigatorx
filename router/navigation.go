@@ -20,6 +20,10 @@ import (
 type NavigationService interface {
 	ShortestPathETA(ctx context.Context, srcLat, srcLon float64,
 		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
+
+	ShortestPathAlternativeStreetETA(ctx context.Context, srcLat, srcLon float64,
+		alternativeStreetLat float64, alternativeStreetLon float64,
+		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
 }
 
 type NavigationHandler struct {
@@ -32,7 +36,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 	r.Group(func(r chi.Router) {
 		r.Route("/api/navigations", func(r chi.Router) {
 			r.Post("/shortestPath", handler.shortestPathETA)
-
+			r.Post("/shortestPathAlternativeStreet", handler.shortestPathAlternativeStreetETA)
 		})
 	})
 }
@@ -46,6 +50,22 @@ type SortestPathRequest struct {
 
 func (s *SortestPathRequest) Bind(r *http.Request) error {
 	if s.SrcLat == 0 || s.SrcLon == 0 || s.DstLat == 0 || s.DstLon == 0 {
+		return errors.New("invalid request")
+	}
+	return nil
+}
+
+type SortestPathAlternativeStreetRequest struct {
+	SrcLat               float64 `json:"src_lat" validate:"required,lt=90,gt=-90"`
+	SrcLon               float64 `json:"src_lon" validate:"required,lt=180,gt=-180"`
+	StreetAlternativeLat float64 `json:"street_alternative_lat" validate:"required,lt=90,gt=-90"`
+	StreetAlternativeLon float64 `json:"street_alternative_lon" validate:"required,lt=180,gt=-180"`
+	DstLat               float64 `json:"dst_lat" validate:"required,lt=90,gt=-90"`
+	DstLon               float64 `json:"dst_lon" validate:"required,lt=180,gt=-180"`
+}
+
+func (s *SortestPathAlternativeStreetRequest) Bind(r *http.Request) error {
+	if s.SrcLat == 0 || s.SrcLon == 0 || s.StreetAlternativeLat == 0 || s.StreetAlternativeLon == 0 || s.DstLat == 0 || s.DstLon == 0 {
 		return errors.New("invalid request")
 	}
 	return nil
@@ -89,6 +109,39 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 	}
 
 	p, dist, n, found, route, eta, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
+	if err != nil {
+		if !found {
+			render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
+			return
+		}
+		render.Render(w, r, ErrInternalServerErrorRend(errors.New("internal server error")))
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found))
+}
+
+func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWriter, r *http.Request) {
+	data := &SortestPathAlternativeStreetRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	p, dist, n, found, route, eta, err := h.svc.ShortestPathAlternativeStreetETA(r.Context(), data.SrcLat, data.SrcLon, data.StreetAlternativeLat, data.StreetAlternativeLon,
+		data.DstLat, data.DstLon)
 	if err != nil {
 		if !found {
 			render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))

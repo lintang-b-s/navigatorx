@@ -24,7 +24,6 @@ type Navigation struct {
 }
 
 func CreateTurnByTurnNavigation(p []Pather) ([]Navigation, error) {
-	p = reverse(p)
 	n := []Navigation{}
 	if len(p) < 4 {
 		return n, nil
