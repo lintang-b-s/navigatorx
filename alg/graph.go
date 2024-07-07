@@ -41,7 +41,7 @@ func (n *Node) PathNeighborCost(to Pather) float64 {
 
 	for _, e := range n.Out_to {
 		if Pather(e.To) == to {
-			return e.Cost
+			return e.Cost/ 1000 // meter -> kilometer
 		}
 	}
 
@@ -73,7 +73,7 @@ func (n *Node) PathNeighborCostETA(to Pather) float64 {
 	for _, e := range n.Out_to {
 		if Pather(e.To) == to {
 			maxSpeed := e.MaxSpeed * 1000 / 60  // m/min
-			return (e.Cost * 100000) / maxSpeed // minute
+			return e.Cost  / maxSpeed // minute
 		}
 	}
 
@@ -97,7 +97,7 @@ func (n *Node) PathEstimatedCostETA(to Pather) float64 {
 
 	// r := float64(absLat + absLon)
 	maxSpeed := 90.0 * 1000.0 / 60.0                      // m/min
-	r := math.Sqrt(absLatSq+absLonSq) * 100000 / maxSpeed // * 100000 -> meter
+	r := math.Sqrt(absLatSq+absLonSq) * 100000 / maxSpeed // * 100000 -> meter 
 	return r
 }
 
@@ -118,7 +118,7 @@ func CalculateETA(from *Node, to *Node) float64 {
 	for _, e := range from.Out_to {
 		if e.To == to {
 			maxSpeed := e.MaxSpeed * 1000 / 60  // m/min
-			return (e.Cost * 100000) / maxSpeed // minute
+			return e.Cost  / maxSpeed // minute
 		}
 	}
 

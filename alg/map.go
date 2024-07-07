@@ -130,11 +130,15 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				SurakartaNodeMap[to.ID] = to
 			}
 
+			// fromToDistance := EuclideanDistance(from, to)
+			fromLoc := NewLocation(from.Lat, from.Lon)
+			toLoc := NewLocation(to.Lat, to.Lon)
+			fromToDistance := HaversineDistance(fromLoc, toLoc) * 1000 // meter
 			if isOneWay && !reversedOneWay {
 				edge := Edge{
 					From:     from,
 					To:       to,
-					Cost:     EuclideanDistance(from, to),
+					Cost:     fromToDistance,
 					MaxSpeed: maxSpeed,
 				}
 				from.Out_to = append(from.Out_to, edge)
@@ -142,7 +146,7 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				reverseEdge := Edge{
 					From:     to,
 					To:       from,
-					Cost:     EuclideanDistance(from, to),
+					Cost:     fromToDistance,
 					MaxSpeed: maxSpeed,
 				}
 				to.Out_to = append(to.Out_to, reverseEdge)
@@ -150,7 +154,7 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				edge := Edge{
 					From:     from,
 					To:       to,
-					Cost:     EuclideanDistance(from, to),
+					Cost:     fromToDistance,
 					MaxSpeed: maxSpeed,
 				}
 				from.Out_to = append(from.Out_to, edge)
@@ -158,7 +162,7 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				reverseEdge := Edge{
 					From:     to,
 					To:       from,
-					Cost:     EuclideanDistance(from, to),
+					Cost:     fromToDistance,
 					MaxSpeed: maxSpeed,
 				}
 				to.Out_to = append(to.Out_to, reverseEdge)

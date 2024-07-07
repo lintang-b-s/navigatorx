@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"errors"
+	"fmt"
 	"lintang/coba_osm/alg"
 	"lintang/coba_osm/domain"
 	"lintang/coba_osm/util"
@@ -10,6 +11,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	enTranslations "github.com/go-playground/validator/v10/translations/en"
 )
 
 type NavigationService interface {
@@ -33,10 +38,10 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 }
 
 type SortestPathRequest struct {
-	SrcLat float64 `json:"src_lat"`
-	SrcLon float64 `json:"src_lon"`
-	DstLat float64 `json:"dst_lat"`
-	DstLon float64 `json:"dst_lon"`
+	SrcLat float64 `json:"src_lat" validate:"required,lt=90,gt=-90"`
+	SrcLon float64 `json:"src_lon" validate:"required,lt=180,gt=-180"`
+	DstLat float64 `json:"dst_lat" validate:"required,lt=90,gt=-90"`
+	DstLon float64 `json:"dst_lon" validate:"required,lt=180,gt=-180"`
 }
 
 func (s *SortestPathRequest) Bind(r *http.Request) error {
@@ -52,7 +57,6 @@ type ShortestPathResponse struct {
 	ETA         float64          `json:"ETA"`
 	Navigations []alg.Navigation `json:"navigations"`
 	Found       bool             `json:"found"`
-	// Route       []alg.Coordinate `json:"route"`
 }
 
 func NewShortestPathResponse(path string, distance float64, navs []alg.Navigation, eta float64, route []alg.Coordinate, found bool) *ShortestPathResponse {
@@ -63,7 +67,6 @@ func NewShortestPathResponse(path string, distance float64, navs []alg.Navigatio
 		ETA:         util.RoundFloat(eta, 2),
 		Navigations: navs,
 		Found:       found,
-		// Route: route,
 	}
 }
 
@@ -73,6 +76,18 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 		render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
+
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
 	p, dist, n, found, route, eta, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
 	if err != nil {
 		if !found {
@@ -91,9 +106,10 @@ type ErrResponse struct {
 	Err            error `json:"-"` // low-level runtime error
 	HTTPStatusCode int   `json:"-"` // http response status code
 
-	StatusText string `json:"status"`          // user-level status message
-	AppCode    int64  `json:"code,omitempty"`  // application-specific error code
-	ErrorText  string `json:"error,omitempty"` // application-level error message, for debugging
+	StatusText    string   `json:"status"`          // user-level status message
+	AppCode       int64    `json:"code,omitempty"`  // application-specific error code
+	ErrorText     string   `json:"error,omitempty"` // application-level error message, for debugging
+	ErrValidation []string `json:"validation,omitempty"`
 }
 
 func (e *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
@@ -107,6 +123,20 @@ func ErrInternalServerErrorRend(err error) render.Renderer {
 		HTTPStatusCode: 500,
 		StatusText:     "Internal server error.",
 		ErrorText:      err.Error(),
+	}
+}
+
+func ErrValidation(err error, errV []error) render.Renderer {
+	vv := []string{}
+	for _, v := range errV {
+		vv = append(vv, v.Error())
+	}
+	return &ErrResponse{
+		Err:            err,
+		HTTPStatusCode: 400,
+		StatusText:     "Invalid request.",
+		ErrorText:      err.Error(),
+		ErrValidation:  vv,
 	}
 }
 
@@ -173,4 +203,16 @@ func getStatusCode(err error) int {
 		}
 	}
 
+}
+
+func translateError(err error, trans ut.Translator) (errs []error) {
+	if err == nil {
+		return nil
+	}
+	validatorErrs := err.(validator.ValidationErrors)
+	for _, e := range validatorErrs {
+		translatedErr := fmt.Errorf(e.Translate(trans))
+		errs = append(errs, translatedErr)
+	}
+	return errs
 }

@@ -58,9 +58,8 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 
 	n, err := alg.CreateTurnByTurnNavigation(p)
 	if err != nil {
-		return alg.RenderPath(p), dist * 100, n, found, route, eta, nil
+		return alg.RenderPath(p), dist, n, found, route, eta, nil
 	}
 
-	return alg.RenderPath(p), dist * 100, n, found, route, eta, nil
+	return alg.RenderPath(p), dist, n, found, route, eta, nil
 }
-

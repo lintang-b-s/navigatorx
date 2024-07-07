@@ -40,7 +40,8 @@ func main() {
 	navigatorSvc := service.NewNavigationService()
 	router.NavigatorRouter(r, navigatorSvc)
 
-	http.ListenAndServe(":3000", r)
+	err := http.ListenAndServe(":3000", r)
+	fmt.Println(err)
 }
 
 func bikinRtreeStreetNetwork(ways []alg.SurakartaWay) {
