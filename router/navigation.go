@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"lintang/coba_osm/alg"
+	"lintang/coba_osm/domain"
 	"lintang/coba_osm/util"
 	"net/http"
 
@@ -74,13 +75,14 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 	}
 	p, dist, n, found, route, eta, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
 	if err != nil {
-		render.Render(w, r, ErrInternalServerError(errors.New("internal server error")))
+		if !found {
+			render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
+			return
+		}
+		render.Render(w, r, ErrInternalServerErrorRend(errors.New("internal server error")))
 		return
 	}
-	if !found {
-		render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
-		return
-	}
+
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found))
 }
@@ -99,7 +101,7 @@ func (e *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func ErrInternalServerError(err error) render.Renderer {
+func ErrInternalServerErrorRend(err error) render.Renderer {
 	return &ErrResponse{
 		Err:            err,
 		HTTPStatusCode: 500,
@@ -124,4 +126,51 @@ func ErrRender(err error) render.Renderer {
 		StatusText:     "Error rendering response.",
 		ErrorText:      err.Error(),
 	}
+}
+
+func ErrChi(err error) render.Renderer {
+	statusText := ""
+	switch getStatusCode(err) {
+	case http.StatusNotFound:
+		statusText = "Resource not found."
+	case http.StatusInternalServerError:
+		statusText = "Internal server error."
+	case http.StatusConflict:
+		statusText = "Resource conflict."
+	case http.StatusBadRequest:
+		statusText = "Bad request."
+	default:
+		statusText = "Error."
+	}
+
+	return &ErrResponse{
+		Err:            err,
+		HTTPStatusCode: getStatusCode(err),
+		StatusText:     statusText,
+		ErrorText:      err.Error(),
+	}
+}
+
+func getStatusCode(err error) int {
+	if err == nil {
+		return http.StatusOK
+	}
+	var ierr *domain.Error
+	if !errors.As(err, &ierr) {
+		return http.StatusInternalServerError
+	} else {
+		switch ierr.Code() {
+		case domain.ErrInternalServerError:
+			return http.StatusInternalServerError
+		case domain.ErrNotFound:
+			return http.StatusNotFound
+		case domain.ErrConflict:
+			return http.StatusConflict
+		case domain.ErrBadParamInput:
+			return http.StatusBadRequest
+		default:
+			return http.StatusInternalServerError
+		}
+	}
+
 }

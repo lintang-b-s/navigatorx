@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"lintang/coba_osm/alg"
+	"lintang/coba_osm/domain"
 	"lintang/coba_osm/util"
 )
 
@@ -42,6 +43,9 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	p, eta, found, dist := alg.AStarETA(fromSurakartaNode, toSurakartaNode)
 	// eta satuannya minute
 	// dist := 0
+	if !found {
+		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, domain.WrapErrorf(err, domain.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
+	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 	for i := range p {
 		pathN := *p[len(p)-1-i].(*alg.Node)
@@ -52,7 +56,11 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 		})
 	}
 
-	n := alg.CreateTurnByTurnNavigation(p)
-	
+	n, err := alg.CreateTurnByTurnNavigation(p)
+	if err != nil {
+		return alg.RenderPath(p), dist * 100, n, found, route, eta, nil
+	}
+
 	return alg.RenderPath(p), dist * 100, n, found, route, eta, nil
 }
+

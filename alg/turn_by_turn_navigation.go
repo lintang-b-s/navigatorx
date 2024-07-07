@@ -1,6 +1,7 @@
 package alg
 
 import (
+	"errors"
 	"fmt"
 	"lintang/coba_osm/util"
 	"math"
@@ -22,11 +23,11 @@ type Navigation struct {
 	Turn        TURN    `json:"turn"`
 }
 
-func CreateTurnByTurnNavigation(p []Pather) []Navigation {
+func CreateTurnByTurnNavigation(p []Pather) ([]Navigation, error) {
 	p = reverse(p)
 	n := []Navigation{}
 	if len(p) < 4 {
-		return n
+		return n, nil
 	}
 
 	startSTNodeBeforeTurn := *p[0].(*Node)
@@ -35,7 +36,6 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 	currStETA := 0.0
 
 	for i := 0; i < len(p)-3; i++ {
-		// pathN := *p[i].(*Node)
 		pathN2 := *p[i+1].(*Node)
 		pathN3 := *p[i+2].(*Node)
 		pathN4 := *p[i+3].(*Node)
@@ -47,8 +47,6 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 			}
 
 			stNode := MakeSixDigitsAfterComa(startSTNodeBeforeTurn, 6)
-			// pathN := MakeSixDigitsAfterComa(pathN, 6)
-			// pathN2 := MakeSixDigitsAfterComa(pathN2, 6)
 			pathN3 := MakeSixDigitsAfterComa(pathN3, 6)
 			pathN4 := MakeSixDigitsAfterComa(pathN4, 6)
 
@@ -69,6 +67,7 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 				// biar turn directionnya makin akurat (ada node simpangan pathN4 yang agak gajelas)
 				if j < len(p) {
 					pathN5 := *p[j].(*Node)
+					pathN5 = MakeSixDigitsAfterComa(pathN5, 6)
 					if pathN5.GetStreetName() == pathN3.GetStreetName() {
 						b3 := Bearing(util.TruncateFloat64(stNode.Lat, 6), util.TruncateFloat64(stNode.Lon, 6), util.TruncateFloat64(pathN3.Lat, 6),
 							util.TruncateFloat64(pathN3.Lon, 6))
@@ -118,6 +117,15 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 	currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
 	maxSpeed := 30 * 1000 / 60
 	currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
+
+	if len(n) == 0 {
+		return []Navigation{{StreetName: "maaf graph nodes dari openstreetmap  diantara shortest path route tidak ada nama jalannya (kotanya primitif)"}},
+			errors.New("maaf graph nodes dari openstreetmap  diantara shortest path route tidak ada nama jalannya (kotanya primitif)")
+	}
+
+	if n[len(n)-1].StreetName == "" {
+		n[len(n)-1].StreetName = "Jalan Unknown"
+	}
 	n = append(n, Navigation{
 		StreetName: n[len(n)-1].StreetName,
 		TurnETA:    util.RoundFloat(currStETA, 2),  //CalculateETA(startSTNodeBeforeTurn, pathN3),
@@ -136,7 +144,7 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 		}
 	}
 
-	return n
+	return n, nil
 }
 
 // buat semua coordinate ada 6 angka dibelakang koma
