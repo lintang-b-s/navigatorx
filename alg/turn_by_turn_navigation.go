@@ -3,6 +3,7 @@ package alg
 import (
 	"fmt"
 	"lintang/coba_osm/util"
+	"math"
 )
 
 type TURN string
@@ -28,16 +29,16 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 		return n
 	}
 
-	startSTNodeBeforeTurn := p[0].(*Node)
+	startSTNodeBeforeTurn := *p[0].(*Node)
 	currStreet := p[0].(*Node).GetStreetName()
 	currStDist := 0.0
 	currStETA := 0.0
 
 	for i := 0; i < len(p)-3; i++ {
-		// pathN := p[i].(*Node)
-		pathN2 := p[i+1].(*Node)
-		pathN3 := p[i+2].(*Node)
-		pathN4 := p[i+3].(*Node)
+		// pathN := *p[i].(*Node)
+		pathN2 := *p[i+1].(*Node)
+		pathN3 := *p[i+2].(*Node)
+		pathN4 := *p[i+3].(*Node)
 		if currStreet != pathN3.GetStreetName() &&
 			(pathN3.GetStreetName() != "") {
 
@@ -45,9 +46,11 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 				continue
 			}
 
-			stNode := MakeSixDigitsAfterComa(*startSTNodeBeforeTurn, 6)
-			// pathN2 := MakeSixDigitsAfterComa(*pathN2, 6)
-			pathN3 := MakeSixDigitsAfterComa(*pathN3, 6)
+			stNode := MakeSixDigitsAfterComa(startSTNodeBeforeTurn, 6)
+			// pathN := MakeSixDigitsAfterComa(pathN, 6)
+			// pathN2 := MakeSixDigitsAfterComa(pathN2, 6)
+			pathN3 := MakeSixDigitsAfterComa(pathN3, 6)
+			pathN4 := MakeSixDigitsAfterComa(pathN4, 6)
 
 			b1 := Bearing(util.TruncateFloat64(stNode.Lat, 6), util.TruncateFloat64(stNode.Lon, 6), util.TruncateFloat64(pathN3.Lat, 6),
 				util.TruncateFloat64(pathN3.Lon, 6))
@@ -62,6 +65,32 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 			turn := CalculateTurn(b1, b2)
 			turnDirection := GetTurnDirection(PredictTurn(turn))
 
+			for j := i + 4; j <= i+4+2; j++ {
+				// biar turn directionnya makin akurat (ada node simpangan pathN4 yang agak gajelas)
+				if j < len(p) {
+					pathN5 := *p[j].(*Node)
+					if pathN5.GetStreetName() == pathN3.GetStreetName() {
+						b3 := Bearing(util.TruncateFloat64(stNode.Lat, 6), util.TruncateFloat64(stNode.Lon, 6), util.TruncateFloat64(pathN3.Lat, 6),
+							util.TruncateFloat64(pathN3.Lon, 6))
+
+						b4 := Bearing(util.TruncateFloat64(pathN3.Lat, 6), util.TruncateFloat64(pathN3.Lon, 6),
+							util.TruncateFloat64(pathN5.Lat, 6), util.TruncateFloat64(pathN5.Lon, 6))
+
+						if b3 == 0 || b4 == 0 {
+							continue
+						}
+
+						turnAdjacentLines := CalculateTurn(b3, b4)
+						turnDirectionAdjacentLines := GetTurnDirection(PredictTurn(turnAdjacentLines))
+
+						if math.Abs(turnAdjacentLines) > math.Abs(turn) {
+							turnDirection = turnDirectionAdjacentLines
+						}
+					}
+				}
+
+			}
+
 			n = append(n, Navigation{
 				StreetName: pathN3.GetStreetName(),
 				TurnETA:    util.RoundFloat(currStETA, 2),  //CalculateETA(startSTNodeBeforeTurn, pathN3),
@@ -69,7 +98,7 @@ func CreateTurnByTurnNavigation(p []Pather) []Navigation {
 				Turn:       turnDirection,
 			})
 
-			startSTNodeBeforeTurn = &pathN3
+			startSTNodeBeforeTurn = pathN3
 			currStreet = pathN3.GetStreetName()
 			currStDist = 0
 			currStETA = 0

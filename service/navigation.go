@@ -28,17 +28,14 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	var err error
 	fromSurakartaNode, err := alg.SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
 	if err != nil {
-		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, nil
 	}
 	toSurakartaNode, err := alg.SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
 	if err != nil {
-		// render.Render(w, r, ErrInvalidRequest(errors.New("internal server error")))
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, nil
 	}
 
 	if fromSurakartaNode == nil || toSurakartaNode == nil {
-		// render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, nil
 	}
 
@@ -47,7 +44,7 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	// dist := 0
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 	for i := range p {
-		pathN := p[len(p)-1-i].(*alg.Node)
+		pathN := *p[len(p)-1-i].(*alg.Node)
 
 		route = append(route, alg.Coordinate{
 			Lat: pathN.Lat,
