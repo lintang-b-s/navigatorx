@@ -50,7 +50,9 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 	for i := range p {
 		pathN := *p[len(p)-1-i].(*alg.Node)
-
+		if pathN.TrafficLight {
+			eta += 2.0
+		}
 		route = append(route, alg.Coordinate{
 			Lat: pathN.Lat,
 			Lon: pathN.Lon,
@@ -164,7 +166,7 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	wg.Wait()
 
 	concatedPaths := []alg.Pather{}
-	paths[0].Paths = reverse(paths[0].Paths[:len(paths[0].Paths)-1]) // exclude start node dari paths[1]
+	paths[0].Paths = reverse(paths[0].Paths)[:len(paths[0].Paths)-1] // exclude start node dari paths[1]
 	paths[1].Paths = reverse(paths[1].Paths)
 	concatedPaths = append(concatedPaths, paths[0].Paths...)
 	concatedPaths = append(concatedPaths, paths[1].Paths...)

@@ -1,6 +1,8 @@
 package alg
 
-import "container/heap"
+import (
+	"container/heap"
+)
 
 type Pather interface {
 	PathNeighbors() []Pather
@@ -62,6 +64,7 @@ func AStarETA(from, to Pather) (path []Pather, eta float64, found bool, dist flo
 				p = append(p, curr.pather)
 				curr = nm.get(cameFrom[curr.pather])
 			}
+
 			p = append(p, from)
 			return p, costSoFar[current.pather], true, distSoFar[current.pather]
 		}

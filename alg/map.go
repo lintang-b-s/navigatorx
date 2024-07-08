@@ -32,6 +32,8 @@ type SurakartaWay struct {
 	CenterLoc []float64 // [lat, lon]
 }
 
+var TrafficLightNodeIDMap = make(map[osm.NodeID]bool)
+
 // gak ada 1 way dengan multiple road type
 
 func InitGraph(ways []*osm.Way) []SurakartaWay {
@@ -39,6 +41,7 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 
 	oneWayTypesMap := make(map[string]int64)
 	twoWayTypesMap := make(map[string]int64)
+	// trafficLightNodeMap := make(map[string]int64)
 
 	surakartaWays := []SurakartaWay{}
 	for idx, way := range ways {
@@ -79,7 +82,7 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 			}
 		}
 		// path,cycleway, construction,steps,platform,bridleway,footway are not for cars
-		if maxSpeed == 50.0 {
+		if maxSpeed == 50.0 || maxSpeed == 0 {
 			maxSpeed = RoadTypeMaxSpeed(roadType)
 		}
 
@@ -105,18 +108,20 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 			fromN := way.Nodes[i]
 
 			from := &Node{
-				Lat:        util.TruncateFloat64(fromN.Lat, 6),
-				Lon:        util.TruncateFloat64(fromN.Lon, 6),
-				ID:         int64(fromN.ID),
-				StreetName: namaJalan,
+				Lat:          util.TruncateFloat64(fromN.Lat, 6),
+				Lon:          util.TruncateFloat64(fromN.Lon, 6),
+				ID:           int64(fromN.ID),
+				StreetName:   namaJalan,
+				TrafficLight: TrafficLightNodeIDMap[fromN.ID],
 			}
 
 			toN := way.Nodes[i+1]
 			to := &Node{
-				Lat:        util.TruncateFloat64(toN.Lat, 6),
-				Lon:        util.TruncateFloat64(toN.Lon, 6),
-				ID:         int64(toN.ID),
-				StreetName: namaJalan,
+				Lat:          util.TruncateFloat64(toN.Lat, 6),
+				Lon:          util.TruncateFloat64(toN.Lon, 6),
+				ID:           int64(toN.ID),
+				StreetName:   namaJalan,
+				TrafficLight: TrafficLightNodeIDMap[toN.ID],
 			}
 
 			if fromRealNode, ok := SurakartaNodeMap[from.ID]; ok {
@@ -178,6 +183,10 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				streetNodeLats = append(streetNodeLats, to.Lat)
 				streetNodeLon = append(streetNodeLon, to.Lon)
 			}
+
+			// cek traffic light
+			// for _, tag := range fromN.Tags {
+			// }
 		}
 		sort.Sort(sort.Float64Slice(streetNodeLats))
 		sort.Sort(sort.Float64Slice(streetNodeLon))
@@ -193,12 +202,12 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 	}
 	clear(SurakartaNodeMap)
 
-	writeWayTypeToCsv(oneWayTypesMap, "onewayTypes.csv")
-	writeWayTypeToCsv(twoWayTypesMap, "twoWayTypes.csv")
+	WriteWayTypeToCsv(oneWayTypesMap, "onewayTypes.csv")
+	WriteWayTypeToCsv(twoWayTypesMap, "twoWayTypes.csv")
 	return surakartaWays
 }
 
-func writeWayTypeToCsv(wayTypesMap map[string]int64, filename string) {
+func WriteWayTypeToCsv(wayTypesMap map[string]int64, filename string) {
 	wayTypesArr := make([][]string, len(wayTypesMap)+1)
 
 	count := 0

@@ -123,17 +123,27 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 		fmt.Println(n.Lat, n.Lon)
 	}
 
+	trafficLightNodeMap := make(map[string]int64)
+
+
 	fmt.Println("edges di solo: " + fmt.Sprint(someWayCount))
 	for idx, way := range ways {
 		for i := 0; i < len(way.Nodes); i++ {
 			fromNodeID := way.Nodes[i].ID
 			ways[idx].Nodes[i].Lat = ctr.nodeMap[fromNodeID].Lat
 			ways[idx].Nodes[i].Lon = ctr.nodeMap[fromNodeID].Lon
+			for _, tag := range ctr.nodeMap[fromNodeID].Tags {
+				if strings.Contains(tag.Value, "traffic_signals") {
+					trafficLightNodeMap[tag.Key+"="+tag.Value]++
+					alg.TrafficLightNodeIDMap[way.Nodes[i].ID] = true
+				}
+			}
 		}
 	}
 
 	surakartaWays := alg.InitGraph(ways)
 	NoteWayTypes(ways)
+	alg.WriteWayTypeToCsv(trafficLightNodeMap, "traffic_light_node.csv")
 	return surakartaWays
 }
 
@@ -154,7 +164,7 @@ func NoteWayTypes(ways []*osm.Way) {
 		}
 	}
 
-	wayTypesArr := make([][]string, len(wayTypesMap)+1+ len(maspeeds))
+	wayTypesArr := make([][]string, len(wayTypesMap)+1+len(maspeeds))
 
 	idx := 0
 	for key, _ := range wayTypesMap {
@@ -163,7 +173,7 @@ func NoteWayTypes(ways []*osm.Way) {
 		idx++
 	}
 	wayTypesArr[idx] = []string{"total", fmt.Sprint(len(ways))}
-	idx++;
+	idx++
 	for key, val := range maspeeds {
 		wayTypesArr[idx] = []string{"maxspeed=" + key, fmt.Sprint(val)}
 		idx++
