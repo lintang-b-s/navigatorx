@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"lintang/coba_osm/alg"
-	"lintang/coba_osm/router"
-	"lintang/coba_osm/service"
+	"lintang/navigatorx/alg"
+	"lintang/navigatorx/router"
+	"lintang/navigatorx/service"
 	"log"
 	"net/http"
 	"os"
@@ -18,8 +18,10 @@ import (
 	"github.com/dhconnelly/rtreego"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/k0kubun/go-ansi"
 	"github.com/paulmach/osm"
 	"github.com/paulmach/osm/osmpbf"
+	"github.com/schollz/progressbar/v3"
 )
 
 type nodeMapContainer struct {
@@ -35,31 +37,48 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Mount("/debug", middleware.Profiler())
-	fmt.Println("server started at :3000")
 
 	navigatorSvc := service.NewNavigationService()
 	router.NavigatorRouter(r, navigatorSvc)
 
+	alg.Contraction()
+	fmt.Println("Ready!!")
+	fmt.Println("server started at :3000")
 	err := http.ListenAndServe(":3000", r)
 	fmt.Println(err)
 }
 
 func bikinRtreeStreetNetwork(ways []alg.SurakartaWay) {
-	for idx, way := range ways {
-		if idx%50000 == 0 {
-			fmt.Println("membuat rtree entry untuk way ke: " + fmt.Sprint(idx))
-		}
+	bar := progressbar.NewOptions(len(ways),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("[cyan][4/6][reset] Membuat rtree entry dari osm way/edge ..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
+	for _, way := range ways {
+		// if idx%50000 == 0 {
+		// 	fmt.Println("membuat rtree entry untuk way ke: " + fmt.Sprint(idx))
+		// }
 		alg.StRTree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
 			Wormhole: nil,
 			Street:   &way})
+		bar.Add(1)
 	}
+	fmt.Println("")
 
 }
 
 // gak bisa simpen rtreenya ke file binary (udah coba)
 
 func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
-	f, err := os.Open("./solo_semarang_jogja_hg_oneway.osm.pbf")
+	f, err := os.Open("./solo_jogja.osm.pbf") // sololama.osm.pbf
 
 	if err != nil {
 		panic(err)
@@ -77,18 +96,32 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 	}
 
 	someWayCount := 0
-	waysNodeID := []osm.NodeID{}
+	// waysNodeID := []osm.NodeID{}
 	ways := []*osm.Way{}
 
-	someNodes := [][]float64{}
+	// someNodes := [][]float64{}
 
+	bar := progressbar.NewOptions(450000,
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("[cyan][1/6][reset] memproses openstreetmap way..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
 	for scanner.Scan() {
 		o := scanner.Object()
 		// do something
 		tipe := o.ObjectID().Type()
 		typeSet[tipe] = typeSet[tipe] + 1
 		if count%50000 == 0 {
-			fmt.Println("memproses openstreetmap way ke : " + fmt.Sprint(count))
+			bar.Add(50000)
+			// fmt.Println("memproses openstreetmap way ke : " + fmt.Sprint(count))
 		}
 		if tipe == osm.TypeNode {
 			ctr.nodeMap[o.(*osm.Node).ID] = o.(*osm.Node)
@@ -100,33 +133,21 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 		}
 		count++
 	}
+	fmt.Println("")
 
-	for key, val := range typeSet {
-		fmt.Println(string(key) + " val : " + fmt.Sprint(val))
-	}
+	// for key, val := range typeSet {
+	// 	fmt.Println(string(key) + " val : " + fmt.Sprint(val))
+	// }
 
 	scanErr := scanner.Err()
 	if scanErr != nil {
 		panic(scanErr)
 	}
-	fmt.Println(count)
-
-	fmt.Println("some nodes...")
-	for n := range someNodes {
-		fmt.Println(someNodes[n])
-	}
-
-	fmt.Println("some way...")
-	for w := range waysNodeID {
-		nID := waysNodeID[w]
-		n := ctr.nodeMap[nID]
-		fmt.Println(n.Lat, n.Lon)
-	}
+	fmt.Println("jumlah osm object di area sekitar solo,semarang,jogja: " + fmt.Sprint(count))
 
 	trafficLightNodeMap := make(map[string]int64)
 
-
-	fmt.Println("edges di solo: " + fmt.Sprint(someWayCount))
+	fmt.Println("jumlah edges/way di area sekitar solo,semarang,jogja: " + fmt.Sprint(someWayCount))
 	for idx, way := range ways {
 		for i := 0; i < len(way.Nodes); i++ {
 			fromNodeID := way.Nodes[i].ID
@@ -141,9 +162,16 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 		}
 	}
 
-	surakartaWays := alg.InitGraph(ways)
+	surakartaWays, surakartaNodes := alg.InitGraph(ways)
+	alg.InitCHGraph(surakartaNodes, len(ways))
+
+	surakartaNodes = nil
+
+	fmt.Println("")
 	NoteWayTypes(ways)
+
 	alg.WriteWayTypeToCsv(trafficLightNodeMap, "traffic_light_node.csv")
+
 	return surakartaWays
 }
 
@@ -192,45 +220,3 @@ func NoteWayTypes(ways []*osm.Way) {
 	writer.WriteAll(wayTypesArr)
 
 }
-
-/*
-// filterWay := func(w *osm.Way) bool {
-
-// 	wayNodeID := w.Nodes[0].ID
-// 	ctr.mu.Lock()
-// 	node, ok := ctr.nodeMap[wayNodeID]
-// 	ctr.mu.Unlock()
-// 	if !ok {
-// 		return true
-// 	}
-// 	// -7.59534660992167, 110.71172965801168
-// 	// -7.513164411569153, 110.84449817651627
-
-// 	if node.Lat < -7.59534660992167 || node.Lon < 110.71172965801168 ||
-// 		node.Lat > -7.513164411569153 || node.Lon > 110.84449817651627 {
-// 		return true
-// 	}
-
-// 	if someWayCount < 10 {
-// 		waysNodeID = append(waysNodeID, wayNodeID)
-// 	}
-
-// 	ways = append(ways, *w)
-// 	someWayCount++
-// 	return false
-// }
-// scanner.FilterWay = filterWay
-// filterway ku komen gak ada
-// filter
-
-// filterNode := func(n *osm.Node) bool {
-// 	if n.Lat < -7.59534660992167 || n.Lon < 110.71172965801168 ||
-// 		n.Lat > -7.513164411569153 || n.Lon > 110.84449817651627 {
-// 		return true
-// 	}
-// 	return false
-// }
-// scanner.FilterNode = filterNode
-// nodeMap := make(map[osm.NodeID]*osm.Node)
-
-*/

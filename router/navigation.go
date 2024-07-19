@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"lintang/coba_osm/alg"
-	"lintang/coba_osm/domain"
-	"lintang/coba_osm/util"
+	"lintang/navigatorx/alg"
+	"lintang/navigatorx/domain"
+	"lintang/navigatorx/util"
+	"math"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -24,6 +25,11 @@ type NavigationService interface {
 	ShortestPathAlternativeStreetETA(ctx context.Context, srcLat, srcLon float64,
 		alternativeStreetLat float64, alternativeStreetLon float64,
 		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
+
+	// ShortestPathETACH(ctx context.Context, srcLat, srcLon float64,
+	// 	dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
+	ShortestPathETACH(ctx context.Context, srcLat, srcLon float64,
+		dstLat float64, dstLon float64) (string, []alg.Navigation, []alg.Coordinate, float64, float64, error)
 }
 
 type NavigationHandler struct {
@@ -37,6 +43,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 		r.Route("/api/navigations", func(r chi.Router) {
 			r.Post("/shortestPath", handler.shortestPathETA)
 			r.Post("/shortestPathAlternativeStreet", handler.shortestPathAlternativeStreetETA)
+			r.Post("/shortestPathCH", handler.shortestPathETACH)
 		})
 	})
 }
@@ -73,10 +80,11 @@ func (s *SortestPathAlternativeStreetRequest) Bind(r *http.Request) error {
 
 type ShortestPathResponse struct {
 	Path        string           `json:"path"`
-	Dist        float64          `json:"distance"`
+	Dist        float64          `json:"distance,omitempty"`
 	ETA         float64          `json:"ETA"`
 	Navigations []alg.Navigation `json:"navigations"`
 	Found       bool             `json:"found"`
+	Route       []alg.Coordinate `json:"route,omitempty"`
 }
 
 func NewShortestPathResponse(path string, distance float64, navs []alg.Navigation, eta float64, route []alg.Coordinate, found bool) *ShortestPathResponse {
@@ -89,6 +97,17 @@ func NewShortestPathResponse(path string, distance float64, navs []alg.Navigatio
 		Found:       found,
 	}
 }
+
+// func NewShortestPathResponseCH(path string, eta float64, route []alg.Coordinate) *ShortestPathResponse {
+
+// 	return &ShortestPathResponse{
+// 		Path: path,
+// 		// Dist:        util.RoundFloat(distance, 2),
+// 		ETA: util.RoundFloat(eta, 2),
+// 		Navigations: navs,
+// 		Route: route,
+// 	}
+// }
 
 func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Request) {
 	data := &SortestPathRequest{}
@@ -149,6 +168,42 @@ func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWrit
 		}
 		render.Render(w, r, ErrInternalServerErrorRend(errors.New("internal server error")))
 		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found))
+}
+
+func (h *NavigationHandler) shortestPathETACH(w http.ResponseWriter, r *http.Request) {
+	data := &SortestPathRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	p, n, route, eta, dist, err := h.svc.ShortestPathETACH(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
+	if err != nil {
+		// if !found {
+		// 	render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
+		// 	return
+		// }
+		render.Render(w, r, ErrInternalServerErrorRend(errors.New("internal server error")))
+		return
+	}
+	found := false
+	if eta != math.MaxFloat64 {
+		found = true
 	}
 
 	render.Status(r, http.StatusOK)

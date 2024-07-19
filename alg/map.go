@@ -3,14 +3,16 @@ package alg
 import (
 	"encoding/csv"
 	"fmt"
-	"lintang/coba_osm/util"
+	"lintang/navigatorx/util"
 	"log"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/k0kubun/go-ansi"
 	"github.com/paulmach/osm"
+	"github.com/schollz/progressbar/v3"
 )
 
 type Coordinate struct {
@@ -27,7 +29,7 @@ type Bound struct {
 
 type SurakartaWay struct {
 	ID        int64
-	Nodes     []*Node
+	NodesID   []int64
 	Bound     Bound
 	CenterLoc []float64 // [lat, lon]
 }
@@ -36,15 +38,28 @@ var TrafficLightNodeIDMap = make(map[osm.NodeID]bool)
 
 // gak ada 1 way dengan multiple road type
 
-func InitGraph(ways []*osm.Way) []SurakartaWay {
+func InitGraph(ways []*osm.Way) ([]SurakartaWay, []Node) {
 	var SurakartaNodeMap = make(map[int64]*Node)
 
 	oneWayTypesMap := make(map[string]int64)
 	twoWayTypesMap := make(map[string]int64)
-	// trafficLightNodeMap := make(map[string]int64)
+
+	bar := progressbar.NewOptions(len(ways),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("[cyan][2/6][reset] Menyimpan way & node Openstreetmap ..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
 
 	surakartaWays := []SurakartaWay{}
-	for idx, way := range ways {
+	for _, way := range ways {
 
 		namaJalan := ""
 
@@ -91,13 +106,12 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 			continue
 		}
 
-		if idx%50000 == 0 {
-			fmt.Println("membuat graph dari openstreetmap way ke: " + fmt.Sprint(idx))
-
-		}
+		// if idx%50000 == 0 {
+		// 	fmt.Println("membuat graph dari openstreetmap way ke: " + fmt.Sprint(idx))
+		// }
 		sWay := SurakartaWay{
-			ID:    int64(way.ID),
-			Nodes: make([]*Node, 0),
+			ID:      int64(way.ID),
+			NodesID: make([]int64, 0),
 		}
 
 		streetNodeLats := []float64{}
@@ -135,7 +149,6 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 				SurakartaNodeMap[to.ID] = to
 			}
 
-			// fromToDistance := EuclideanDistance(from, to)
 			fromLoc := NewLocation(from.Lat, from.Lon)
 			toLoc := NewLocation(to.Lat, to.Lon)
 			fromToDistance := HaversineDistance(fromLoc, toLoc) * 1000 // meter
@@ -174,19 +187,16 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 			}
 
 			// add node ke surakartaway
-			sWay.Nodes = append(sWay.Nodes, from)
+			sWay.NodesID = append(sWay.NodesID, from.ID)
 			// append node lat & node lon
 			streetNodeLats = append(streetNodeLats, from.Lat)
 			streetNodeLon = append(streetNodeLon, from.Lon)
 			if i == len(way.Nodes)-2 {
-				sWay.Nodes = append(sWay.Nodes, to)
+				sWay.NodesID = append(sWay.NodesID, to.ID)
 				streetNodeLats = append(streetNodeLats, to.Lat)
 				streetNodeLon = append(streetNodeLon, to.Lon)
 			}
 
-			// cek traffic light
-			// for _, tag := range fromN.Tags {
-			// }
 		}
 		sort.Sort(sort.Float64Slice(streetNodeLats))
 		sort.Sort(sort.Float64Slice(streetNodeLon))
@@ -199,14 +209,21 @@ func InitGraph(ways []*osm.Way) []SurakartaWay {
 		sWay.CenterLoc = []float64{centerLat, centerLon}
 
 		surakartaWays = append(surakartaWays, sWay)
+		bar.Add(1)
 	}
-	clear(SurakartaNodeMap)
 
 	WriteWayTypeToCsv(oneWayTypesMap, "onewayTypes.csv")
 	WriteWayTypeToCsv(twoWayTypesMap, "twoWayTypes.csv")
-	return surakartaWays
-}
 
+	// return osm map nodes
+	surakartaNodes := []Node{}
+	for _, node := range SurakartaNodeMap {
+		surakartaNodes = append(surakartaNodes, *node)
+	}
+	clear(SurakartaNodeMap)
+	fmt.Println("")
+	return surakartaWays, surakartaNodes
+}
 func WriteWayTypeToCsv(wayTypesMap map[string]int64, filename string) {
 	wayTypesArr := make([][]string, len(wayTypesMap)+1)
 
@@ -232,3 +249,177 @@ func WriteWayTypeToCsv(wayTypesMap map[string]int64, filename string) {
 
 	writer.WriteAll(wayTypesArr)
 }
+
+// func InitGraph(ways []*osm.Way) ([]SurakartaWay, []Node) {
+// 	var SurakartaNodeMap = make(map[int64]*Node)
+
+// 	oneWayTypesMap := make(map[string]int64)
+// 	twoWayTypesMap := make(map[string]int64)
+// 	// trafficLightNodeMap := make(map[string]int64)
+
+// 	surakartaWays := []SurakartaWay{}
+// 	for idx, way := range ways {
+
+// 		namaJalan := ""
+
+// 		maxSpeed := 50.0
+
+// 		isOneWay := false // 0, 1
+// 		reversedOneWay := false
+
+// 		roadTypes := make(map[string]int)
+
+// 		roadType := ""
+
+// 		for _, tag := range way.Tags {
+// 			if tag.Key == "highway" {
+// 				twoWayTypesMap[tag.Key+"="+tag.Value] += 1
+// 				roadTypes[tag.Value] += 1
+// 				roadType = tag.Value
+// 			}
+// 			if strings.Contains(tag.Key, "oneway") && !strings.Contains(tag.Value, "no") {
+// 				oneWayTypesMap[tag.Key+"="+tag.Value] += 1
+// 				isOneWay = true
+// 				if strings.Contains(tag.Value, "-1") {
+// 					reversedOneWay = true
+// 				}
+// 			}
+// 			if strings.Contains(tag.Key, "maxspeed") {
+// 				_, err := strconv.ParseFloat(tag.Value, 64)
+// 				if err != nil {
+// 					maxSpeed, _ = strconv.ParseFloat(tag.Value, 64)
+// 				}
+// 			}
+
+// 			if tag.Key == "name" {
+// 				namaJalan = tag.Value
+// 			}
+// 		}
+// 		// path,cycleway, construction,steps,platform,bridleway,footway are not for cars
+// 		if maxSpeed == 50.0 || maxSpeed == 0 {
+// 			maxSpeed = RoadTypeMaxSpeed(roadType)
+// 		}
+
+// 		if roadType == "path" || roadType == "cycleway" || roadType == "construction" || roadType == "steps" || roadType == "platform" ||
+// 			roadType == "bridleway" || roadType == "footway" {
+// 			continue
+// 		}
+
+// 		if idx%50000 == 0 {
+// 			fmt.Println("membuat graph dari openstreetmap way ke: " + fmt.Sprint(idx))
+
+// 		}
+// 		sWay := SurakartaWay{
+// 			ID:    int64(way.ID),
+// 			Nodes: make([]*Node, 0),
+// 		}
+
+// 		streetNodeLats := []float64{}
+// 		streetNodeLon := []float64{}
+
+// 		// creategraph node
+// 		for i := 0; i < len(way.Nodes)-1; i++ {
+// 			fromN := way.Nodes[i]
+
+// 			from := &Node{
+// 				Lat:          util.TruncateFloat64(fromN.Lat, 6),
+// 				Lon:          util.TruncateFloat64(fromN.Lon, 6),
+// 				ID:           int64(fromN.ID),
+// 				StreetName:   namaJalan,
+// 				TrafficLight: TrafficLightNodeIDMap[fromN.ID],
+// 			}
+
+// 			toN := way.Nodes[i+1]
+// 			to := &Node{
+// 				Lat:          util.TruncateFloat64(toN.Lat, 6),
+// 				Lon:          util.TruncateFloat64(toN.Lon, 6),
+// 				ID:           int64(toN.ID),
+// 				StreetName:   namaJalan,
+// 				TrafficLight: TrafficLightNodeIDMap[toN.ID],
+// 			}
+
+// 			if fromRealNode, ok := SurakartaNodeMap[from.ID]; ok {
+// 				from = fromRealNode
+// 			} else {
+// 				SurakartaNodeMap[from.ID] = from
+// 			}
+// 			if toRealNode, ok := SurakartaNodeMap[to.ID]; ok {
+// 				to = toRealNode
+// 			} else {
+// 				SurakartaNodeMap[to.ID] = to
+// 			}
+
+// 			fromLoc := NewLocation(from.Lat, from.Lon)
+// 			toLoc := NewLocation(to.Lat, to.Lon)
+// 			fromToDistance := HaversineDistance(fromLoc, toLoc) * 1000 // meter
+// 			if isOneWay && !reversedOneWay {
+// 				edge := Edge{
+// 					From:     from,
+// 					To:       to,
+// 					Cost:     fromToDistance,
+// 					MaxSpeed: maxSpeed,
+// 				}
+// 				from.Out_to = append(from.Out_to, edge)
+// 			} else if isOneWay && reversedOneWay {
+// 				reverseEdge := Edge{
+// 					From:     to,
+// 					To:       from,
+// 					Cost:     fromToDistance,
+// 					MaxSpeed: maxSpeed,
+// 				}
+// 				to.Out_to = append(to.Out_to, reverseEdge)
+// 			} else {
+// 				edge := Edge{
+// 					From:     from,
+// 					To:       to,
+// 					Cost:     fromToDistance,
+// 					MaxSpeed: maxSpeed,
+// 				}
+// 				from.Out_to = append(from.Out_to, edge)
+
+// 				reverseEdge := Edge{
+// 					From:     to,
+// 					To:       from,
+// 					Cost:     fromToDistance,
+// 					MaxSpeed: maxSpeed,
+// 				}
+// 				to.Out_to = append(to.Out_to, reverseEdge)
+// 			}
+
+// 			// add node ke surakartaway
+// 			sWay.Nodes = append(sWay.Nodes, from)
+// 			// append node lat & node lon
+// 			streetNodeLats = append(streetNodeLats, from.Lat)
+// 			streetNodeLon = append(streetNodeLon, from.Lon)
+// 			if i == len(way.Nodes)-2 {
+// 				sWay.Nodes = append(sWay.Nodes, to)
+// 				streetNodeLats = append(streetNodeLats, to.Lat)
+// 				streetNodeLon = append(streetNodeLon, to.Lon)
+// 			}
+
+// 		}
+// 		sort.Sort(sort.Float64Slice(streetNodeLats))
+// 		sort.Sort(sort.Float64Slice(streetNodeLon))
+// 		sWay.Bound.MinLat = streetNodeLats[0]
+// 		sWay.Bound.MaxLat = streetNodeLats[len(streetNodeLats)-1]
+// 		sWay.Bound.MinLon = streetNodeLon[0]
+// 		sWay.Bound.MaxLon = streetNodeLon[len(streetNodeLon)-1]
+// 		// https://www.movable-type.co.uk/scripts/latlong.html
+// 		centerLat, centerLon := MidPoint(sWay.Bound.MinLat, sWay.Bound.MinLon, sWay.Bound.MaxLat, sWay.Bound.MaxLon)
+// 		sWay.CenterLoc = []float64{centerLat, centerLon}
+
+// 		surakartaWays = append(surakartaWays, sWay)
+// 	}
+
+// 	WriteWayTypeToCsv(oneWayTypesMap, "onewayTypes.csv")
+// 	WriteWayTypeToCsv(twoWayTypesMap, "twoWayTypes.csv")
+
+// 	// return osm map nodes
+// 	surakartaNodes := []Node{}
+// 	for _, node := range SurakartaNodeMap {
+// 		surakartaNodes = append(surakartaNodes, *node)
+// 	}
+// 	clear(SurakartaNodeMap)
+
+// 	return surakartaWays, surakartaNodes
+// }

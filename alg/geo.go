@@ -72,51 +72,13 @@ func radToDeg(r float64) float64 {
 	return 180.0 * r / math.Pi
 }
 
-// func GetMinimumPrecisionBearing(lat1, lon1 float64) int {
-// 	min1 := countDecimalPlaces(lat1)
-// 	min2 := countDecimalPlaces(lon1)
-
-// 	mins := []int{}
-// 	mins = append(mins, min1, min2)
-// 	min := 100000
-// 	for _, l := range mins {
-// 		if l < min {
-// 			min = l
-// 		}
-// 	}
-
-// 	return min
-// }
-
-// func GetMinimumPrecisionBearing(lat1, lon1 float64, lat2, lon2 float64) int {
-// 	min1 := countDecimalPlaces(lat1)
-// 	min2 := countDecimalPlaces(lon1)
-// 	min3 := countDecimalPlaces(lat2)
-// 	min4 := countDecimalPlaces(lon2)
-// 	mins := []int{}
-// 	mins = append(mins, min1, min2, min3, min4)
-// 	min := 100000
-// 	for _, l := range mins {
-// 		if l < min {
-// 			min = l
-// 		}
-// 	}
-
-// 	return min
-// }
 
 func countDecimalPlaces(value float64) int {
-	// Konversi nilai float64 menjadi string
 	strValue := strconv.FormatFloat(value, 'f', -1, 64)
-
-	// Pecah string dengan pemisah titik desimal
 	parts := strings.Split(strValue, ".")
 
-	// Jika tidak ada bagian desimal, return 0
 	if len(parts) < 2 {
 		return 0
 	}
-
-	// Panjang bagian desimal adalah jumlah digit di belakang koma
 	return len(parts[1])
 }

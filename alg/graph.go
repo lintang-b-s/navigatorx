@@ -1,8 +1,6 @@
 package alg
 
 import (
-	"math"
-
 	"github.com/twpayne/go-polyline"
 )
 
@@ -24,111 +22,15 @@ type Node struct {
 	TrafficLight bool
 }
 
-func (n *Node) PathNeighbors() []Pather {
-	neighbors := []Pather{}
-
-	for _, e := range n.Out_to {
-		neighbors = append(neighbors, Pather(e.To))
-	}
-
-	return neighbors
-}
-
-func (n *Node) GetStreetName() string {
-	return n.StreetName
-}
-
-func (n *Node) PathNeighborCost(to Pather) float64 {
-
-	for _, e := range n.Out_to {
-		if Pather(e.To) == to {
-			return e.Cost / 1000 // meter -> kilometer
-		}
-	}
-
-	return 10000000
-}
-
-func (n *Node) PathEstimatedCost(to Pather) float64 {
-
-	toN := to.(*Node)
-	absLat := toN.Lat - n.Lat
-	if absLat < 0 {
-		absLat = -absLat
-	}
-	absLon := toN.Lon - n.Lon
-	if absLon < 0 {
-		absLon = -absLon
-	}
-
-	absLatSq := absLat * absLat
-	absLonSq := absLon * absLon
-
-	// r := float64(absLat + absLon)
-	r := math.Sqrt(absLatSq + absLonSq)
-	return r
-}
-
-func (n *Node) PathNeighborCostETA(to Pather) float64 {
-
-	// trafficCost := 1.0
-	// if to.(*Node).TrafficLight {
-	// 	trafficCost = 1.05
-	// }
-
-	for _, e := range n.Out_to {
-		if Pather(e.To) == to {
-			maxSpeed := e.MaxSpeed * 1000 / 60 // m/min
-			return (e.Cost / maxSpeed)         // minute
-		}
-	}
-
-	return 100000000000
-}
-
-func (n *Node) PathEstimatedCostETA(to Pather) float64 {
-
-	toN := to.(*Node)
-	absLat := toN.Lat - n.Lat
-	if absLat < 0 {
-		absLat = -absLat
-	}
-	absLon := toN.Lon - n.Lon
-	if absLon < 0 {
-		absLon = -absLon
-	}
-
-	absLatSq := absLat * absLat
-	absLonSq := absLon * absLon
-
-	// r := float64(absLat + absLon)
-	maxSpeed := 90.0 * 1000.0 / 60.0                      // m/min
-	r := math.Sqrt(absLatSq+absLonSq) * 100000 / maxSpeed // * 100000 -> meter
-	return r
-}
-
-func RenderPath(path []Pather) string {
+func RenderPath(path []CHNode) string {
 	s := ""
 	coords := make([][]float64, 0)
 	for _, p := range path {
-		pT := p.(*Node)
-		// s = fmt.Sprint(pT.ID) + " " + s
+		pT := p
 		coords = append(coords, []float64{pT.Lat, pT.Lon})
-		// s = fmt.Sprint(idx) + " " + fmt.Sprintf("%f", pT.Lat) + ", " + fmt.Sprintf("%f", pT.Lon) + " \n" + s
 	}
 	s = string(polyline.EncodeCoords(coords))
 	return s
-}
-
-func CalculateETA(from *Node, to *Node) float64 {
-	for _, e := range from.Out_to {
-		if e.To == to {
-			maxSpeed := e.MaxSpeed * 1000 / 60 // m/min
-			return e.Cost / maxSpeed           // minute
-		}
-	}
-
-	return 100000000
 }
 
 func RoadTypeMaxSpeed(roadType string) float64 {
@@ -177,3 +79,92 @@ func RoadTypeMaxSpeed(roadType string) float64 {
 		return 40
 	}
 }
+
+// func (n *Node) PathNeighbors() []Pather {
+// 	neighbors := []Pather{}
+
+// 	for _, e := range n.Out_to {
+// 		neighbors = append(neighbors, Pather(e.To))
+// 	}
+
+// 	return neighbors
+// }
+
+// func (n *Node) GetStreetName() string {
+// 	return n.StreetName
+// }
+
+// func (n *Node) PathNeighborCost(to Pather) float64 {
+
+// 	for _, e := range n.Out_to {
+// 		if Pather(e.To) == to {
+// 			return e.Cost / 1000 // meter -> kilometer
+// 		}
+// 	}
+
+// 	return 10000000
+// }
+
+// func (n *Node) PathEstimatedCost(to Pather) float64 {
+
+// 	toN := to.(*Node)
+// 	absLat := toN.Lat - n.Lat
+// 	if absLat < 0 {
+// 		absLat = -absLat
+// 	}
+// 	absLon := toN.Lon - n.Lon
+// 	if absLon < 0 {
+// 		absLon = -absLon
+// 	}
+
+// 	absLatSq := absLat * absLat
+// 	absLonSq := absLon * absLon
+
+// 	// r := float64(absLat + absLon)
+// 	r := math.Sqrt(absLatSq + absLonSq)
+// 	return r
+// }
+
+// func (n *Node) PathNeighborCostETA(to Pather) float64 {
+
+// 	for _, e := range n.Out_to {
+// 		if Pather(e.To) == to {
+// 			maxSpeed := e.MaxSpeed * 1000 / 60 // m/min
+// 			return (e.Cost / maxSpeed)         // minute
+// 		}
+// 	}
+
+// 	return 100000000000
+// }
+
+// func (n *Node) PathEstimatedCostETA(to Pather) float64 {
+
+// 	toN := to.(*Node)
+// 	absLat := toN.Lat - n.Lat
+// 	if absLat < 0 {
+// 		absLat = -absLat
+// 	}
+// 	absLon := toN.Lon - n.Lon
+// 	if absLon < 0 {
+// 		absLon = -absLon
+// 	}
+
+// 	absLatSq := absLat * absLat
+// 	absLonSq := absLon * absLon
+
+// 	// r := float64(absLat + absLon)
+// 	maxSpeed := 90.0 * 1000.0 / 60.0                      // m/min
+// 	r := math.Sqrt(absLatSq+absLonSq) * 100000 / maxSpeed // * 100000 -> meter
+// 	return r
+// }
+
+// func RenderPath(path []Pather) string {
+// 	s := ""
+// 	coords := make([][]float64, 0)
+// 	for _, p := range path {
+// 		pT := p.(*Node)
+// 		coords = append(coords, []float64{pT.Lat, pT.Lon})
+// 	}
+// 	s = string(polyline.EncodeCoords(coords))
+// 	return s
+// }
