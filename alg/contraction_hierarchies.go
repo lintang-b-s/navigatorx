@@ -5,63 +5,69 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"runtime"
+	"time"
 
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 )
 
+// urutin field descending by size, biar heap sizenya kecil (https://medium.com/@ali.can/memory-optimization-in-go-23a56544ccc0)
 type EdgePair struct {
-	ToNodeIDX      int32
 	Weight         float64
 	Dist           float64
-	ETA            float64
+	ToNodeIDX      int32
 	IsShortcut     bool
 	RemovedEdgeOne *EdgePair
 	RemovedEdgeTwo *EdgePair
 }
 
 type CHNode struct {
-	IDx          int32
-	Lat          float64
-	Lon          float64
-	StreetName   string
-	TrafficLight bool
-	orderPos     int64
 	OutEdges     []EdgePair
 	InEdges      []EdgePair
+	Lat          float64
+	Lon          float64
+	orderPos     int64
+	IDx          int32
+	StreetName   string
+	TrafficLight bool
 }
 
 type Metadata struct {
 	MeanDegree       float64
-	EdgeCount        int
-	NodeCount        int
+	ShortcutsCount   int64
 	degrees          []int
 	InEdgeOrigCount  []int
 	OutEdgeOrigCount []int
-	ShortcutsCount   int64
+	EdgeCount        int
+	NodeCount        int
 }
 
 type ContractedGraph struct {
-	OrigGraph  []*CHNode // graph contraction hiearchies
+	Metadata   Metadata
+	Ready      bool
+	Rtree      *Rtree
+	OrigGraph  []CHNode // graph contraction hiearchies
 	AStarGraph []*CHNode
 
-	// RevGraph       []*CHNode // graph dengan reversed edge
-	Metadata       Metadata
 	PQNodeOrdering *priorityQueueNodeOrdering
 }
 
 var maxPollFactorHeuristic = float64(5)
 var maxPollFactorContraction = float64(200) //float64(200)
-// var CHGraph = ContractedGraph{OrigGraph: []*CHNode{}, RevGraph: []*CHNode{}}
-var CHGraph = ContractedGraph{OrigGraph: []*CHNode{}, AStarGraph: []*CHNode{}}
 
-// var CHGraph = ContractedGraph{OrigGraph: []*CHNode{}, }
+func NewContractedGraph() *ContractedGraph {
+	return &ContractedGraph{
+		OrigGraph:  make([]CHNode, 0),
+		AStarGraph: make([]*CHNode, 0),
+		Ready:      false,
+	}
+}
 
-var NodeIdxMap = make(map[int64]int32)
-
-func InitCHGraph(nodes []Node, edgeCount int) {
+func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]int32 {
 	gLen := len(nodes)
 	count := 0
+	var nodeIdxMap = make(map[int64]int32)
 
 	bar := progressbar.NewOptions(3,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
@@ -79,7 +85,7 @@ func InitCHGraph(nodes []Node, edgeCount int) {
 
 	for _, node := range nodes {
 
-		CHGraph.OrigGraph = append(CHGraph.OrigGraph, &CHNode{
+		ch.OrigGraph = append(ch.OrigGraph, CHNode{
 			OutEdges:     []EdgePair{},
 			InEdges:      []EdgePair{},
 			IDx:          int32(count),
@@ -89,31 +95,24 @@ func InitCHGraph(nodes []Node, edgeCount int) {
 			TrafficLight: node.TrafficLight,
 		})
 
-		// CHGraph.AStarGraph = append(CHGraph.AStarGraph, &CHNode{
-		// 	OutEdges:     []EdgePair{},
-		// 	IDx:          int32(count),
-		// 	Lat:          node.Lat,
-		// 	Lon:          node.Lon,
-		// 	StreetName:   node.StreetName,
-		// 	TrafficLight: node.TrafficLight,
-		// })
+		ch.AStarGraph = append(ch.AStarGraph, &CHNode{
+			OutEdges:     []EdgePair{},
+			IDx:          int32(count),
+			Lat:          node.Lat,
+			Lon:          node.Lon,
+			StreetName:   node.StreetName,
+			TrafficLight: node.TrafficLight,
+		})
 
-		// CHGraph.RevGraph = append(CHGraph.RevGraph, &CHNode{Edges: []EdgePair{},
-		// 	IDx:          int32(count),
-		// 	Lat:          node.Lat,
-		// 	Lon:          node.Lon,
-		// 	StreetName:   node.StreetName,
-		// 	TrafficLight: node.TrafficLight,
-		// })
-		NodeIdxMap[node.ID] = int32(count)
+		nodeIdxMap[node.ID] = int32(count)
 		count++
 	}
 	bar.Add(1)
-	CHGraph.Metadata.degrees = make([]int, gLen)
-	CHGraph.Metadata.InEdgeOrigCount = make([]int, gLen)
-	CHGraph.Metadata.OutEdgeOrigCount = make([]int, gLen)
-	CHGraph.Metadata.ShortcutsCount = 0
-	CHGraph.PQNodeOrdering = &priorityQueueNodeOrdering{}
+	ch.Metadata.degrees = make([]int, gLen)
+	ch.Metadata.InEdgeOrigCount = make([]int, gLen)
+	ch.Metadata.OutEdgeOrigCount = make([]int, gLen)
+	ch.Metadata.ShortcutsCount = 0
+	ch.PQNodeOrdering = &priorityQueueNodeOrdering{}
 
 	// init graph original
 	for idx, node := range nodes {
@@ -121,62 +120,63 @@ func InitCHGraph(nodes []Node, edgeCount int) {
 		for _, edge := range node.Out_to {
 			maxSpeed := edge.MaxSpeed * 1000 / 60 // m /min
 			cost := edge.Cost / maxSpeed
-			toIdx := NodeIdxMap[edge.To.ID]
+			toIdx := nodeIdxMap[edge.To.ID]
 
-			CHGraph.OrigGraph[idx].OutEdges = append(CHGraph.OrigGraph[idx].OutEdges, EdgePair{toIdx, cost,
-				edge.Cost, cost, false, nil, nil})
-			// CHGraph.AStarGraph[idx].OutEdges = append(CHGraph.AStarGraph[idx].OutEdges, EdgePair{toIdx, cost,
-			// 	edge.Cost, cost, false, nil, nil})
+			ch.OrigGraph[idx].OutEdges = append(ch.OrigGraph[idx].OutEdges, EdgePair{cost,
+				edge.Cost, toIdx, false, nil, nil})
+			ch.AStarGraph[idx].OutEdges = append(ch.AStarGraph[idx].OutEdges, EdgePair{cost,
+				edge.Cost, toIdx, false, nil, nil})
 
 			// tambah degree nodenya
-			CHGraph.Metadata.degrees[idx]++
+			ch.Metadata.degrees[idx]++
 			outEdgeCounter++
 		}
-		CHGraph.Metadata.OutEdgeOrigCount[idx] = outEdgeCounter
+		ch.Metadata.OutEdgeOrigCount[idx] = outEdgeCounter
 	}
 
 	bar.Add(1)
 	// init graph edge dibalik
 	for i := 0; i < gLen; i++ {
 		inEdgeCounter := 0
-		for _, edge := range CHGraph.OrigGraph[i].OutEdges {
+		for _, edge := range ch.OrigGraph[i].OutEdges {
 			to := edge.ToNodeIDX
 			weight := edge.Weight
 
-			CHGraph.OrigGraph[to].InEdges = append(CHGraph.OrigGraph[to].InEdges, EdgePair{int32(i), weight,
-				edge.Dist, weight, false, nil, nil})
+			ch.OrigGraph[to].InEdges = append(ch.OrigGraph[to].InEdges, EdgePair{weight,
+				edge.Dist, int32(i), false, nil, nil})
 
 			// tambah degree nodenya
-			CHGraph.Metadata.degrees[i]++
+			ch.Metadata.degrees[i]++
 			inEdgeCounter++
 		}
-		CHGraph.Metadata.InEdgeOrigCount[i] = inEdgeCounter
+		ch.Metadata.InEdgeOrigCount[i] = inEdgeCounter
 	}
 
 	bar.Add(1)
 
-	// CHGraph.ContractedGraph = CHGraph.OrigGraph
-	CHGraph.Metadata.EdgeCount = edgeCount
-	CHGraph.Metadata.NodeCount = gLen
-	CHGraph.Metadata.MeanDegree = float64(edgeCount) * 1.0 / float64(gLen)
+	// ch.ContractedGraph = ch.OrigGraph
+	ch.Metadata.EdgeCount = edgeCount
+	ch.Metadata.NodeCount = gLen
+	ch.Metadata.MeanDegree = float64(edgeCount) * 1.0 / float64(gLen)
+
+	return nodeIdxMap
 }
 
 /*
-referensi: 
+referensi:
 - https://github.com/graphhopper/graphhopper/blob/master/core/src/main/java/com/graphhopper/routing/ch/NodeBasedNodeContractor.java
 - https://github.com/vlarmet/cppRouting/blob/master/src/contract.cpp
 - https://github.com/navjindervirdee/Advanced-Shortest-Paths-Algorithms/blob/master/Contraction%20Hierarchies/DistPreprocessSmall.java
-
 */
-func Contraction() {
-
-	UpdatePrioritiesOfRemainingNodes() // bikin node ordering
+func (ch *ContractedGraph) Contraction() {
+	st := time.Now()
+	ch.UpdatePrioritiesOfRemainingNodes() // bikin node ordering
 
 	level := 0
-	contracted := make([]bool, CHGraph.Metadata.NodeCount)
+	contracted := make([]bool, ch.Metadata.NodeCount)
 	orderNum := int64(0)
 
-	nq := CHGraph.PQNodeOrdering
+	nq := ch.PQNodeOrdering
 
 	bar := progressbar.NewOptions(nq.Len(),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
@@ -196,7 +196,7 @@ func Contraction() {
 		polledNode := heap.Pop(nq).(*pqCHNode)
 
 		// lazy update
-		priority := calculatePriority(polledNode.NodeIDx, contracted)
+		priority := ch.calculatePriority(polledNode.NodeIDx, contracted)
 		pq := *nq
 		if len(pq) > 0 && priority > pq[0].rank {
 			// & priority >  pq[0].rank
@@ -205,39 +205,43 @@ func Contraction() {
 			continue
 		}
 
-		CHGraph.OrigGraph[polledNode.NodeIDx].orderPos = orderNum
+		ch.OrigGraph[polledNode.NodeIDx].orderPos = orderNum
 
-		contractNode(polledNode.NodeIDx, level, contracted[polledNode.NodeIDx], contracted)
+		ch.contractNode(polledNode.NodeIDx, level, contracted[polledNode.NodeIDx], contracted)
 		contracted[polledNode.NodeIDx] = true
 		level++
 		orderNum++
 		bar.Add(1)
 	}
 	fmt.Println("")
-	fmt.Println("total shortcuts dibuat: ", CHGraph.Metadata.ShortcutsCount)
+	fmt.Println("total shortcuts dibuat: ", ch.Metadata.ShortcutsCount)
 
-	CHGraph.PQNodeOrdering = nil
+	ch.PQNodeOrdering = nil
+	ch.Metadata = Metadata{}
+	runtime.GC()
+	runtime.GC() 
+	end := time.Now().Sub(st)
+	fmt.Println("lama preprocessing contraction hierarchies: : ", end.Minutes(), " menit")
 }
 
-func contractNode(nodeIDx int32, level int, isContracted bool, contracted []bool) {
+func (ch *ContractedGraph) contractNode(nodeIDx int32, level int, isContracted bool, contracted []bool) {
 
 	if isContracted {
 		return
 	}
-	contractNodeNow(nodeIDx, contracted)
+	ch.contractNodeNow(nodeIDx, contracted)
 
 }
 
-func contractNodeNow(nodeIDx int32, contracted []bool) {
-	degree, _, _, _ := findAndHandleShortcuts(nodeIDx, addOrUpdateShortcut, int(CHGraph.Metadata.MeanDegree*maxPollFactorContraction),
+func (ch *ContractedGraph) contractNodeNow(nodeIDx int32, contracted []bool) {
+	degree, _, _, _ := ch.findAndHandleShortcuts(nodeIDx, ch.addOrUpdateShortcut, int(ch.Metadata.MeanDegree*maxPollFactorContraction),
 		contracted)
-	CHGraph.Metadata.MeanDegree = (CHGraph.Metadata.MeanDegree*2 + float64(degree)) / 3 // (CHGraph.Metadata.MeanDegree*2 + float64(degree)) / 3
-	// if shortcutCount > 0 {
-	disconnect(nodeIDx)
-	// }
+	ch.Metadata.MeanDegree = (ch.Metadata.MeanDegree*2 + float64(degree)) / 3
+	ch.disconnect(nodeIDx)
+
 }
 
-func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toNodeIDx int32, weight float64,
+func (ch *ContractedGraph) findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toNodeIDx int32, nodeIdx int32, weight float64,
 	removedEdgeOne, removedEdgeTwo *EdgePair,
 	outOrigEdgeCount, inOrigEdgeCount int),
 	maxVisitedNodes int, contracted []bool) (int, int, int, error) {
@@ -247,7 +251,7 @@ func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toN
 	pMax := 0.0
 	pInMax := 0.0
 	pOutMax := 0.0
-	for _, inEdge := range CHGraph.OrigGraph[nodeIDx].InEdges {
+	for _, inEdge := range ch.OrigGraph[nodeIDx].InEdges {
 		toNIDx := inEdge.ToNodeIDX
 		if contracted[toNIDx] {
 			continue
@@ -256,7 +260,7 @@ func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toN
 			pInMax = inEdge.Weight
 		}
 	}
-	for _, outEdge := range CHGraph.OrigGraph[nodeIDx].OutEdges {
+	for _, outEdge := range ch.OrigGraph[nodeIDx].OutEdges {
 		toNIDx := outEdge.ToNodeIDX
 		if contracted[toNIDx] {
 			continue
@@ -267,7 +271,7 @@ func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toN
 	}
 	pMax = pInMax + pOutMax
 
-	for _, inEdge := range CHGraph.OrigGraph[nodeIDx].InEdges {
+	for _, inEdge := range ch.OrigGraph[nodeIDx].InEdges {
 		fromNodeIDx := inEdge.ToNodeIDX
 		if fromNodeIDx == int32(nodeIDx) {
 			return 0, 0, 0, errors.New(fmt.Sprintf(`unexpected loop-edge at node: %v `, nodeIDx))
@@ -281,7 +285,7 @@ func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toN
 		// outging edge dari nodeIDx
 		degree++
 
-		for _, outEdge := range CHGraph.OrigGraph[nodeIDx].OutEdges {
+		for _, outEdge := range ch.OrigGraph[nodeIDx].OutEdges {
 			toNode := outEdge.ToNodeIDX
 			if contracted[toNode] {
 				continue
@@ -294,39 +298,40 @@ func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toN
 
 			existingDirectWeight := incomingEdgeWeight + outEdge.Weight
 
-			maxWeight := dijkstraWitnessSearch(fromNodeIDx, toNode, nodeIDx, existingDirectWeight, maxVisitedNodes, pMax,
+			maxWeight := ch.dijkstraWitnessSearch(fromNodeIDx, toNode, nodeIDx, existingDirectWeight, maxVisitedNodes, pMax,
 				contracted)
 
 			if maxWeight <= existingDirectWeight {
-				// FOUND witness path, tidak perlu add shortcut
+				// FOUND witness shortest path, tidak perlu add shortcut
 				continue
 			}
 			// kalo d(u,w) > Pw , tambah shortcut
 			// Pw = existingDirectWeight = d(u,v) + d(v,w)
 			shortcutCount++
-			originalEdgesCount += CHGraph.Metadata.InEdgeOrigCount[nodeIDx] + CHGraph.Metadata.OutEdgeOrigCount[nodeIDx]
-			shortcutHandler(fromNodeIDx, toNode, existingDirectWeight, &inEdge, &outEdge,
-				CHGraph.Metadata.OutEdgeOrigCount[nodeIDx], CHGraph.Metadata.InEdgeOrigCount[nodeIDx])
+			originalEdgesCount += ch.Metadata.InEdgeOrigCount[nodeIDx] + ch.Metadata.OutEdgeOrigCount[nodeIDx]
+			shortcutHandler(fromNodeIDx, toNode, nodeIDx, existingDirectWeight, &inEdge, &outEdge,
+				ch.Metadata.OutEdgeOrigCount[nodeIDx], ch.Metadata.InEdgeOrigCount[nodeIDx])
 
 		}
 	}
 	return degree, shortcutCount, originalEdgesCount, nil
 }
 
-func disconnect(nodeIDx int32) {
+func (ch *ContractedGraph) disconnect(nodeIDx int32) {
 	// gak usah dihapus edge nya , biar map matching nya bener
-	removeContractedNode(nodeIDx)
+	ch.removeContractedNode(nodeIDx)
 }
 
-func countShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEdgeOne, removedEdgeTwo *EdgePair,
+func countShortcut(fromNodeIDx, toNodeIDx int32, nodeIDx int32, weight float64, removedEdgeOne, removedEdgeTwo *EdgePair,
 	outOrigEdgeCount, inOrigEdgeCount int) {
 	// shortcutCount++
 }
 
-func addOrUpdateShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEdgeOne, removedEdgeTwo *EdgePair,
+func (ch *ContractedGraph) addOrUpdateShortcut(fromNodeIDx, toNodeIDx int32, nodeIDx int32, weight float64, removedEdgeOne, removedEdgeTwo *EdgePair,
 	outOrigEdgeCount, inOrigEdgeCount int) {
+
 	exists := false
-	for _, edge := range CHGraph.OrigGraph[fromNodeIDx].OutEdges {
+	for _, edge := range ch.OrigGraph[fromNodeIDx].OutEdges {
 		if edge.ToNodeIDX != toNodeIDx || !edge.IsShortcut {
 			continue
 		}
@@ -336,7 +341,7 @@ func addOrUpdateShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEd
 		}
 	}
 
-	for _, edge := range CHGraph.OrigGraph[toNodeIDx].InEdges {
+	for _, edge := range ch.OrigGraph[toNodeIDx].InEdges {
 		if edge.ToNodeIDX != fromNodeIDx || !edge.IsShortcut {
 			continue
 		}
@@ -347,21 +352,22 @@ func addOrUpdateShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEd
 	}
 
 	if !exists {
-		addShortcut(fromNodeIDx, toNodeIDx, weight, removedEdgeOne, removedEdgeTwo)
-		CHGraph.Metadata.ShortcutsCount++
+		ch.addShortcut(fromNodeIDx, toNodeIDx, weight, removedEdgeOne, removedEdgeTwo)
+		ch.Metadata.ShortcutsCount++
 	}
 }
 
-func addShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEdgeOne, removedEdgeTwo *EdgePair) {
-	fromN := CHGraph.OrigGraph[fromNodeIDx]
-	toN := CHGraph.OrigGraph[toNodeIDx]
+func (ch *ContractedGraph) addShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEdgeOne, removedEdgeTwo *EdgePair) {
+
+	fromN := ch.OrigGraph[fromNodeIDx]
+	toN := ch.OrigGraph[toNodeIDx]
 	fromLoc := NewLocation(fromN.Lat, fromN.Lon)
 	toLoc := NewLocation(toN.Lat, toN.Lon)
 	dist := HaversineDistance(fromLoc, toLoc)
 	// add shortcut outcoming edge
 	dup := false
 	// newETA := removedEdgeOne.ETA + removedEdgeTwo.ETA
-	for _, edge := range CHGraph.OrigGraph[fromNodeIDx].OutEdges {
+	for _, edge := range ch.OrigGraph[fromNodeIDx].OutEdges {
 		if edge.ToNodeIDX == toNodeIDx && edge.Weight > weight {
 			edge.Weight = weight
 			edge.Dist = dist
@@ -373,13 +379,14 @@ func addShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEdgeOne, r
 		}
 	}
 	if !dup {
-		CHGraph.OrigGraph[fromNodeIDx].OutEdges = append(CHGraph.OrigGraph[fromNodeIDx].OutEdges, EdgePair{toNodeIDx, weight, dist, weight, true,
+		ch.OrigGraph[fromNodeIDx].OutEdges = append(ch.OrigGraph[fromNodeIDx].OutEdges, EdgePair{weight, dist, toNodeIDx, true,
 			removedEdgeOne, removedEdgeTwo})
+		ch.Metadata.degrees[fromNodeIDx]++
 	}
 
 	dup = false
 	// add shortcut incoming edge
-	for _, edge := range CHGraph.OrigGraph[toNodeIDx].InEdges {
+	for _, edge := range ch.OrigGraph[toNodeIDx].InEdges {
 		if edge.ToNodeIDX == fromNodeIDx && edge.Weight > weight {
 			edge.Weight = weight
 			edge.Dist = dist
@@ -392,56 +399,59 @@ func addShortcut(fromNodeIDx, toNodeIDx int32, weight float64, removedEdgeOne, r
 
 	}
 	if !dup {
-		CHGraph.OrigGraph[toNodeIDx].InEdges = append(CHGraph.OrigGraph[toNodeIDx].InEdges, EdgePair{fromNodeIDx, weight, dist, weight, true, removedEdgeOne,
+		ch.OrigGraph[toNodeIDx].InEdges = append(ch.OrigGraph[toNodeIDx].InEdges, EdgePair{weight, dist,  fromNodeIDx, true, removedEdgeOne,
 			removedEdgeTwo,
 		})
+		ch.Metadata.degrees[toNodeIDx]++
+
 	}
 }
 
-func removeContractedNode(nodeIDx int32) {
+func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 
 	// remove semua incoming edge ke nodeIDx
-	for _, nEdge := range CHGraph.OrigGraph[nodeIDx].InEdges {
+	for _, nEdge := range ch.OrigGraph[nodeIDx].InEdges {
 		nd := nEdge.ToNodeIDX
 		ind := []int{}
-		for i, inEdge := range CHGraph.OrigGraph[nd].OutEdges {
-			//incoming edge ke nodeIDx
+		for i, inEdge := range ch.OrigGraph[nd].OutEdges {
+			// incoming edge ke nodeIDx
 			if inEdge.ToNodeIDX == nodeIDx && !inEdge.IsShortcut {
 				ind = append(ind, i)
 
 			}
+
 		}
 		ind = reverse(ind)
 		for _, edgeIDx := range ind {
-			quickDelete(edgeIDx, CHGraph.OrigGraph[nd], "f")
-			CHGraph.Metadata.degrees[nd]--
-			CHGraph.Metadata.OutEdgeOrigCount[nd]-- // outgoing edge dari nd berkurang 1
+			quickDelete(edgeIDx, &ch.OrigGraph[nd], "f")
+			ch.Metadata.degrees[nd]--
+			ch.Metadata.OutEdgeOrigCount[nd]-- // outgoing edge dari nd berkurang 1
 		}
 	}
 
 	// remove semua outgoing edge dari nodeIDx
-	for _, nEdge := range CHGraph.OrigGraph[nodeIDx].OutEdges {
+	for _, nEdge := range ch.OrigGraph[nodeIDx].OutEdges {
 		nd := nEdge.ToNodeIDX
 		ind := []int{}
-		for i, outEdge := range CHGraph.OrigGraph[nd].InEdges {
-			//outgoing edge dari nodeIDx
+		for i, outEdge := range ch.OrigGraph[nd].InEdges {
+			// outgoing edge dari nodeIDx
 			if outEdge.ToNodeIDX == nodeIDx && !outEdge.IsShortcut {
 				ind = append(ind, i)
 			}
+
 		}
 		ind = reverse(ind)
 		for _, edgeIDx := range ind {
-			quickDelete(edgeIDx, CHGraph.OrigGraph[nd], "b")
-			CHGraph.Metadata.degrees[nd]--
-			CHGraph.Metadata.InEdgeOrigCount[nd]-- // incoming edge ke nd berkurang 1
+			quickDelete(edgeIDx, &ch.OrigGraph[nd], "b")
+			ch.Metadata.degrees[nd]--
+			ch.Metadata.InEdgeOrigCount[nd]-- // incoming edge ke nd berkurang 1
 		}
+
 	}
 
-	//  edges dari nodeIdx bukan nil
-	// nodeIdx bukan nil
-	CHGraph.Metadata.degrees[nodeIDx] = 0
-	CHGraph.Metadata.InEdgeOrigCount[nodeIDx] = 0
-	CHGraph.Metadata.OutEdgeOrigCount[nodeIDx] = 0
+	ch.Metadata.degrees[nodeIDx] = 0
+	ch.Metadata.InEdgeOrigCount[nodeIDx] = 0
+	ch.Metadata.OutEdgeOrigCount[nodeIDx] = 0
 }
 
 func quickDelete(idx int, g *CHNode, dir string) {
@@ -455,14 +465,14 @@ func quickDelete(idx int, g *CHNode, dir string) {
 
 }
 
-func calculatePriority(nodeIDx int32, contracted []bool) float64 {
+func (ch *ContractedGraph) calculatePriority(nodeIDx int32, contracted []bool) float64 {
 
-	_, shortcutsCount, originalEdgesCount, _ := findAndHandleShortcuts(nodeIDx, countShortcut, int(CHGraph.Metadata.MeanDegree*maxPollFactorHeuristic),
+	_, shortcutsCount, originalEdgesCount, _ := ch.findAndHandleShortcuts(nodeIDx, countShortcut, int(ch.Metadata.MeanDegree*maxPollFactorHeuristic),
 		contracted)
 
 	// |shortcuts(v)| − |{(u, v) | v uncontracted}| − |{(v, w) | v uncontracted}|
 	// outDegree+inDegree
-	edgeDifference := float64(shortcutsCount - CHGraph.Metadata.degrees[nodeIDx])
+	edgeDifference := float64(shortcutsCount - ch.Metadata.degrees[nodeIDx])
 	// 1 shortcut, 10 degree = -9
 	// 5 shortcut, 10 degree = -5
 	// 5 shortcut ED > 1 shortcut ED
@@ -476,9 +486,9 @@ type pqCHNode struct {
 	index   int
 }
 
-func UpdatePrioritiesOfRemainingNodes() {
-	heap.Init(CHGraph.PQNodeOrdering)
-	bar := progressbar.NewOptions(len(CHGraph.OrigGraph),
+func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
+	heap.Init(ch.PQNodeOrdering)
+	bar := progressbar.NewOptions(len(ch.OrigGraph),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
@@ -492,13 +502,13 @@ func UpdatePrioritiesOfRemainingNodes() {
 			BarEnd:        "]",
 		}))
 
-	contracted := make([]bool, CHGraph.Metadata.NodeCount)
-	for nodeIDx, _ := range CHGraph.OrigGraph {
+	contracted := make([]bool, ch.Metadata.NodeCount)
+	for nodeIDx, _ := range ch.OrigGraph {
 		// if (isContracted(node)) {
 		// 	continue
 		// }
-		priority := calculatePriority(int32(nodeIDx), contracted)
-		heap.Push(CHGraph.PQNodeOrdering, &pqCHNode{NodeIDx: int32(nodeIDx), rank: float64(priority)})
+		priority := ch.calculatePriority(int32(nodeIDx), contracted)
+		heap.Push(ch.PQNodeOrdering, &pqCHNode{NodeIDx: int32(nodeIDx), rank: float64(priority)})
 		bar.Add(1)
 	}
 	fmt.Println("")
@@ -539,160 +549,6 @@ func reverse(arr []int) []int {
 	return arr
 }
 
-// func findAndHandleShortcuts(nodeIDx int32, shortcutHandler func(fromNodeIDx, toNodeIDx int32, weight float64,
-// 	outOrigEdgeCount, inOrigEdgeCount int), maxVisitedNodes int) (int, int, int, error) {
-// 	degree := 0
-// 	shortcutCount := 0
-// 	originalEdgesCount := 0
-
-// 	for _, incEdge := range CHGraph.RevGraph[nodeIDx].Edges {
-// 		fromNodeIDx := incEdge.ToNodeIDX
-// 		if fromNodeIDx == int32(nodeIDx) {
-// 			return 0, 0, 0, errors.New(fmt.Sprintf(`unexpected loop-edge at node: %v `, nodeIDx))
-// 		}
-
-// 		incomingEdgeWeight := incEdge.Weight
-
-// 		// outging edge dari nodeIDx
-// 		degree++
-
-// 		for _, outEdge := range CHGraph.OrigGraph[nodeIDx].Edges {
-// 			toNode := outEdge.ToNodeIDX
-
-// 			if toNode == fromNodeIDx {
-// 				// gak perlu search untuk witness dari node balik ke node itu lagi
-// 				continue
-// 			}
-
-// 			existingDirectWeight := incomingEdgeWeight + outEdge.Weight
-
-// 			maxWeight := dijkstraWitnessSearch(fromNodeIDx, toNode, nodeIDx, existingDirectWeight, maxVisitedNodes)
-
-// 			if maxWeight <= existingDirectWeight {
-// 				// FOUND witness path, tidak perlu add shortcut
-// 				continue
-// 			}
-// 			shortcutCount++
-// 			originalEdgesCount += CHGraph.Metadata.InEdgeOrigCount[nodeIDx] + CHGraph.Metadata.OutEdgeOrigCount[nodeIDx]
-// 			shortcutHandler(fromNodeIDx, toNode, existingDirectWeight,
-// 				CHGraph.Metadata.OutEdgeOrigCount[nodeIDx], CHGraph.Metadata.InEdgeOrigCount[nodeIDx])
-
-// 		}
-// 	}
-// 	return degree, shortcutCount, originalEdgesCount, nil
-// }
-
-// func addOrUpdateShortcut(fromNodeIDx, toNodeIDx int32, weight float64,
-// 	outOrigEdgeCount, inOrigEdgeCount int) {
-// 	exists := false
-// 	for _, edge := range CHGraph.OrigGraph[fromNodeIDx].Edges {
-// 		if edge.ToNodeIDX != toNodeIDx || !edge.IsShortcut {
-// 			continue
-// 		}
-// 		exists = true
-// 		if weight < edge.Weight {
-// 			edge.Weight = weight
-// 		}
-// 	}
-
-// 	for _, edge := range CHGraph.RevGraph[toNodeIDx].Edges {
-// 		if edge.ToNodeIDX != fromNodeIDx || !edge.IsShortcut {
-// 			continue
-// 		}
-// 		exists = true
-// 		if weight < edge.Weight {
-// 			edge.Weight = weight
-// 		}
-// 	}
-
-// 	if !exists {
-// 		addShortcut(fromNodeIDx, toNodeIDx, weight)
-// 	}
-// }
-
-// func addShortcut(fromNodeIDx, toNodeIDx int32, weight float64) {
-// 	fromN := CHGraph.OrigGraph[fromNodeIDx]
-// 	toN := CHGraph.OrigGraph[toNodeIDx]
-// 	fromLoc := NewLocation(fromN.Lat, fromN.Lon)
-// 	toLoc := NewLocation(toN.Lat, toN.Lon)
-// 	dist := HaversineDistance(fromLoc, toLoc)
-// 	// add shortcut outcoming edge
-// 	dup := false
-// 	for _, edge := range CHGraph.OrigGraph[fromNodeIDx].Edges {
-// 		if edge.ToNodeIDX == toNodeIDx && edge.Weight > weight {
-// 			edge.Weight = weight
-// 			edge.Dist = dist
-// 			dup = true
-// 			break
-// 		}
-// 	}
-// 	if !dup {
-// 		CHGraph.OrigGraph[fromNodeIDx].Edges = append(CHGraph.OrigGraph[fromNodeIDx].Edges, EdgePair{toNodeIDx, weight, dist, true})
-// 	}
-
-// 	dup = false
-// 	// add shortcut incoming edge
-// 	for _, edge := range CHGraph.RevGraph[toNodeIDx].Edges {
-// 		if edge.ToNodeIDX == fromNodeIDx && edge.Weight > weight {
-// 			edge.Weight = weight
-// 			edge.Dist = dist
-// 			dup = true
-// 			break
-// 		}
-
-// 	}
-// 	if !dup {
-// 		CHGraph.RevGraph[toNodeIDx].Edges = append(CHGraph.RevGraph[toNodeIDx].Edges, EdgePair{fromNodeIDx, weight, dist, true})
-// 	}
-// }
-
-// func removeContractedNode(nodeIDx int32) {
-
-// 	// remove semua incoming edge ke nodeIDx
-// 	for _, nEdge := range CHGraph.RevGraph[nodeIDx].Edges {
-// 		nd := nEdge.ToNodeIDX
-// 		ind := []int{}
-// 		for i, inEdge := range CHGraph.OrigGraph[nd].Edges {
-// 			//incoming edge ke nodeIDx
-// 			if inEdge.ToNodeIDX == nodeIDx {
-// 				ind = append(ind, i)
-
-// 			}
-// 		}
-// 		ind = reverse(ind)
-// 		for _, edgeIDx := range ind {
-// 			quickDelete(edgeIDx, CHGraph.OrigGraph[nd])
-// 			CHGraph.Metadata.degrees[nd]--
-// 			CHGraph.Metadata.OutEdgeOrigCount[nd]-- // outgoing edge dari nd berkurang 1
-// 		}
-// 	}
-
-// 	// remove semua outgoing edge dari nodeIDx
-// 	for _, nEdge := range CHGraph.OrigGraph[nodeIDx].Edges {
-// 		nd := nEdge.ToNodeIDX
-// 		ind := []int{}
-// 		for i, outEdge := range CHGraph.RevGraph[nd].Edges {
-// 			//outgoing edge dari nodeIDx
-// 			if outEdge.ToNodeIDX == nodeIDx {
-// 				ind = append(ind, i)
-// 			}
-// 		}
-// 		ind = reverse(ind)
-// 		for _, edgeIDx := range ind {
-// 			quickDelete(edgeIDx, CHGraph.RevGraph[nd])
-// 			CHGraph.Metadata.degrees[nd]--
-// 			CHGraph.Metadata.InEdgeOrigCount[nd]-- // incoming edge ke nd berkurang 1
-// 		}
-// 	}
-
-// 	//  edges dari nodeIdx bukan nil
-// 	// nodeIdx bukan nil
-// 	CHGraph.Metadata.degrees[nodeIDx] = 0
-// 	CHGraph.Metadata.InEdgeOrigCount[nodeIDx] = 0
-// 	CHGraph.Metadata.OutEdgeOrigCount[nodeIDx] = 0
-// }
-
-// func quickDelete(idx int, g *CHNode) {
-// 	g.Edges[idx] = g.Edges[len(g.Edges)-1]
-// 	g.Edges = g.Edges[:len(g.Edges)-1]
-// }
+func (ch *ContractedGraph) IsChReady() bool {
+	return ch.Ready
+}

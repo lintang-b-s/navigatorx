@@ -1,8 +1,0 @@
-
-go build -gcflags "-m"
-
-go build -gcflags "-m=2"
-
-
-- ganti & hapus global variable 
-- 

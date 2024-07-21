@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -25,32 +26,42 @@ import (
 )
 
 type nodeMapContainer struct {
-	mu      sync.Mutex
 	nodeMap map[osm.NodeID]*osm.Node
+	mu      sync.Mutex
 }
 
 func main() {
-	// f, err := os.Open("./central_java-latest.osm.pbf")
-	surakartaWays := bikinGraphFromOpenstreetmap()
-	bikinRtreeStreetNetwork(surakartaWays)
-	surakartaWays = surakartaWays[len(surakartaWays)-1:]
+	surakartaWays, ch, nodeIdxMap := bikinGraphFromOpenstreetmap()
+	bikinRtreeStreetNetwork(surakartaWays, ch, nodeIdxMap)
+	surakartaWays = nil
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Mount("/debug", middleware.Profiler())
 
-	navigatorSvc := service.NewNavigationService()
+	navigatorSvc := service.NewNavigationService(ch)
 	router.NavigatorRouter(r, navigatorSvc)
 
-	alg.Contraction()
-	fmt.Println("Ready!!")
+	go func() {
+		ch.Contraction()
+		ch.AStarGraph = nil
+		ch.Ready = true
+		runtime.GC()
+		runtime.GC() // run garbage collection biar heap size nya ngurang wkwkwk
+
+		fmt.Println("Contraction Hieararchies + Bidirectional Dijkstra Ready!!")
+	}()
+
+	fmt.Println("A* Ready!!")
 	fmt.Println("server started at :3000")
 	err := http.ListenAndServe(":3000", r)
 	fmt.Println(err)
 }
 
-func bikinRtreeStreetNetwork(ways []alg.SurakartaWay) {
+// gak bisa simpen rtreenya ke file binary (udah coba)
+func bikinRtreeStreetNetwork(ways []alg.SurakartaWay, ch *alg.ContractedGraph, nodeIdxMap map[int64]int32) {
 	bar := progressbar.NewOptions(len(ways),
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
@@ -62,22 +73,26 @@ func bikinRtreeStreetNetwork(ways []alg.SurakartaWay) {
 			BarStart:      "[",
 			BarEnd:        "]",
 		}))
+	for i := range len(ways) {
+		way := ways[i]
+		for j := range len(way.NodesID) {
+			way.NodesID[j] = int64(nodeIdxMap[way.NodesID[j]])
+		}
+	}
+
+	rtg := rtreego.NewTree(2, 25, 50) // 2 dimension, 25 min entries dan 50 max entries
+	rt := alg.NewRtree(rtg)
 	for _, way := range ways {
-		// if idx%50000 == 0 {
-		// 	fmt.Println("membuat rtree entry untuk way ke: " + fmt.Sprint(idx))
-		// }
-		alg.StRTree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
+		rt.StRtree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
 			Wormhole: nil,
 			Street:   &way})
 		bar.Add(1)
 	}
 	fmt.Println("")
-
+	ch.Rtree = rt
 }
 
-// gak bisa simpen rtreenya ke file binary (udah coba)
-
-func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
+func bikinGraphFromOpenstreetmap() ([]alg.SurakartaWay, *alg.ContractedGraph, map[int64]int32) {
 	f, err := os.Open("./solo_jogja.osm.pbf") // sololama.osm.pbf
 
 	if err != nil {
@@ -96,10 +111,7 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 	}
 
 	someWayCount := 0
-	// waysNodeID := []osm.NodeID{}
 	ways := []*osm.Way{}
-
-	// someNodes := [][]float64{}
 
 	bar := progressbar.NewOptions(450000,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), //you should install "github.com/k0kubun/go-ansi"
@@ -121,7 +133,6 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 		typeSet[tipe] = typeSet[tipe] + 1
 		if count%50000 == 0 {
 			bar.Add(50000)
-			// fmt.Println("memproses openstreetmap way ke : " + fmt.Sprint(count))
 		}
 		if tipe == osm.TypeNode {
 			ctr.nodeMap[o.(*osm.Node).ID] = o.(*osm.Node)
@@ -135,10 +146,6 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 	}
 	fmt.Println("")
 
-	// for key, val := range typeSet {
-	// 	fmt.Println(string(key) + " val : " + fmt.Sprint(val))
-	// }
-
 	scanErr := scanner.Err()
 	if scanErr != nil {
 		panic(scanErr)
@@ -146,6 +153,7 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 	fmt.Println("jumlah osm object di area sekitar solo,semarang,jogja: " + fmt.Sprint(count))
 
 	trafficLightNodeMap := make(map[string]int64)
+	var trafficLightNodeIDMap = make(map[osm.NodeID]bool)
 
 	fmt.Println("jumlah edges/way di area sekitar solo,semarang,jogja: " + fmt.Sprint(someWayCount))
 	for idx, way := range ways {
@@ -156,14 +164,15 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 			for _, tag := range ctr.nodeMap[fromNodeID].Tags {
 				if strings.Contains(tag.Value, "traffic_signals") {
 					trafficLightNodeMap[tag.Key+"="+tag.Value]++
-					alg.TrafficLightNodeIDMap[way.Nodes[i].ID] = true
+					trafficLightNodeIDMap[way.Nodes[i].ID] = true
 				}
 			}
 		}
 	}
 
-	surakartaWays, surakartaNodes := alg.InitGraph(ways)
-	alg.InitCHGraph(surakartaNodes, len(ways))
+	surakartaWays, surakartaNodes := alg.InitGraph(ways, trafficLightNodeIDMap)
+	ch := alg.NewContractedGraph()
+	nodeIdxMap := ch.InitCHGraph(surakartaNodes, len(ways))
 
 	surakartaNodes = nil
 
@@ -172,7 +181,7 @@ func bikinGraphFromOpenstreetmap() []alg.SurakartaWay {
 
 	alg.WriteWayTypeToCsv(trafficLightNodeMap, "traffic_light_node.csv")
 
-	return surakartaWays
+	return surakartaWays, ch, nodeIdxMap
 }
 
 func NoteWayTypes(ways []*osm.Way) {

@@ -6,25 +6,25 @@ import (
 )
 
 type dijkstraNode struct {
-	CHNode *CHNode
-	rank   float64
-	index  int
+	rank  float64
+	index int
+	CHNode CHNode
 }
 
-type nodeMapCHDijkstra map[*CHNode]*dijkstraNode
+type nodeMapCHDijkstra map[int32]*dijkstraNode
 
-func (nm nodeMapCHDijkstra) getCHDJ(p *CHNode) *dijkstraNode {
-	n, ok := nm[p]
+func (nm nodeMapCHDijkstra) getCHDJ(p CHNode) *dijkstraNode {
+	n, ok := nm[p.IDx]
 
 	if !ok {
 		n = &dijkstraNode{CHNode: p}
 
-		nm[p] = n
+		nm[p.IDx] = n
 	}
 	return n
 }
 
-func dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32,
+func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32,
 	acceptedWeight float64, maxSettledNodes int, pMax float64, contracted []bool) float64 {
 
 	visited := make(map[int32]bool)
@@ -33,7 +33,7 @@ func dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32
 	nm := nodeMapCHDijkstra{}
 	nq := &priorityQueueDijkstra{}
 	heap.Init(nq)
-	fromNode := nm.getCHDJ(CHGraph.OrigGraph[fromNodeIDx])
+	fromNode := nm.getCHDJ(ch.OrigGraph[fromNodeIDx])
 	fromNode.rank = 0
 	heap.Push(nq, fromNode)
 
@@ -51,10 +51,10 @@ func dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32
 		}
 
 		curr := heap.Pop(nq).(*dijkstraNode)
-		// if contracted[curr.CHNode.IDx] {
-		// 	// continue
-		// }
-		if curr == nm.getCHDJ(CHGraph.OrigGraph[targetNodeIDx]) {
+		if contracted[curr.CHNode.IDx] {
+			continue
+		}
+		if curr == nm.getCHDJ(ch.OrigGraph[targetNodeIDx]) {
 			return cost[curr.CHNode.IDx]
 		}
 
@@ -73,7 +73,7 @@ func dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32
 				continue
 			}
 
-			neighborP := CHGraph.OrigGraph[neighbor.ToNodeIDX]
+			neighborP := ch.OrigGraph[neighbor.ToNodeIDX]
 			neighborNode := nm.getCHDJ(neighborP)
 			newCost := cost[curr.CHNode.IDx] + neighbor.Weight
 			_, ok := cost[neighbor.ToNodeIDX]
@@ -88,3 +88,4 @@ func dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32
 		settledNodes++
 	}
 }
+

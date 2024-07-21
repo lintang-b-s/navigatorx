@@ -20,11 +20,11 @@ import (
 
 type NavigationService interface {
 	ShortestPathETA(ctx context.Context, srcLat, srcLon float64,
-		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
+		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, bool, error)
 
 	ShortestPathAlternativeStreetETA(ctx context.Context, srcLat, srcLon float64,
 		alternativeStreetLat float64, alternativeStreetLon float64,
-		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
+		dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, bool, error)
 
 	// ShortestPathETACH(ctx context.Context, srcLat, srcLon float64,
 	// 	dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
@@ -85,29 +85,26 @@ type ShortestPathResponse struct {
 	Navigations []alg.Navigation `json:"navigations"`
 	Found       bool             `json:"found"`
 	Route       []alg.Coordinate `json:"route,omitempty"`
+	Alg         string           `json:"algorithm"`
 }
 
-func NewShortestPathResponse(path string, distance float64, navs []alg.Navigation, eta float64, route []alg.Coordinate, found bool) *ShortestPathResponse {
+func NewShortestPathResponse(path string, distance float64, navs []alg.Navigation, eta float64, route []alg.Coordinate, found bool, isCH bool) *ShortestPathResponse {
 
+	var alg string
+	if isCH {
+		alg = "Contraction Hieararchies + Bidirectional Dijkstra"
+	} else {
+		alg = "A* Algorithm"
+	}
 	return &ShortestPathResponse{
 		Path:        path,
 		Dist:        util.RoundFloat(distance, 2),
 		ETA:         util.RoundFloat(eta, 2),
 		Navigations: navs,
 		Found:       found,
+		Alg:         alg,
 	}
 }
-
-// func NewShortestPathResponseCH(path string, eta float64, route []alg.Coordinate) *ShortestPathResponse {
-
-// 	return &ShortestPathResponse{
-// 		Path: path,
-// 		// Dist:        util.RoundFloat(distance, 2),
-// 		ETA: util.RoundFloat(eta, 2),
-// 		Navigations: navs,
-// 		Route: route,
-// 	}
-// }
 
 func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Request) {
 	data := &SortestPathRequest{}
@@ -127,7 +124,7 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	p, dist, n, found, route, eta, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
+	p, dist, n, found, route, eta, isCH, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
 	if err != nil {
 		if !found {
 			render.Render(w, r, ErrInvalidRequest(errors.New("node not found")))
@@ -138,7 +135,7 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 	}
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found))
+	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found, isCH))
 }
 
 func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWriter, r *http.Request) {
@@ -159,7 +156,7 @@ func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWrit
 		return
 	}
 
-	p, dist, n, found, route, eta, err := h.svc.ShortestPathAlternativeStreetETA(r.Context(), data.SrcLat, data.SrcLon, data.StreetAlternativeLat, data.StreetAlternativeLon,
+	p, dist, n, found, route, eta, isCH, err := h.svc.ShortestPathAlternativeStreetETA(r.Context(), data.SrcLat, data.SrcLon, data.StreetAlternativeLat, data.StreetAlternativeLon,
 		data.DstLat, data.DstLon)
 	if err != nil {
 		if !found {
@@ -171,7 +168,7 @@ func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWrit
 	}
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found))
+	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found, isCH))
 }
 
 func (h *NavigationHandler) shortestPathETACH(w http.ResponseWriter, r *http.Request) {
@@ -207,7 +204,7 @@ func (h *NavigationHandler) shortestPathETACH(w http.ResponseWriter, r *http.Req
 	}
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found))
+	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found, true))
 }
 
 type ErrResponse struct {

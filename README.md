@@ -17,7 +17,7 @@ curl --location 'http://localhost:3000/api/navigations/shortestPathCH' \
     "dst_lon":   110.32971396395838
 }'
 
-Note: Source  & Destination Coordinate harus tempat di sekitaran kota yogyakarta/surakarta/semarang
+Note: Source  & Destination Coordinate harus tempat di sekitaran provinsi yogyakarta/kota surakarta/klaten
 5. copy polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. Rute terdekat akan tampil di peta :) 
 
 

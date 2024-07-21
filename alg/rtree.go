@@ -14,9 +14,17 @@ type StreetRect struct {
 
 func (s *StreetRect) Bounds() rtreego.Rect {
 	// define the bounds of s to be a rectangle centered at s.location
-	// with side lengths 2 * tol:
+	// with side lengths 2 * tol:  (https://github.com/dhconnelly/rtreego?tab=readme-ov-file#documentation)
 	return s.Location.ToRect(tol)
 }
 
 // rtree
-var StRTree = rtreego.NewTree(2, 25, 50) // 2 dimension, 25 min entries dan 50 max entries
+type Rtree struct {
+	StRtree *rtreego.Rtree
+}
+
+func NewRtree(stR *rtreego.Rtree) *Rtree {
+	return &Rtree{
+		stR,
+	}
+}

@@ -7,18 +7,18 @@ import (
 )
 
 type cameFromPair struct {
-	NodeIDx int32
 	Edge    EdgePair
+	NodeIDx int32
 }
 
 /*
-referensi: 
+referensi:
 - https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/shortestpath/ContractionHierarchyBidirectionalDijkstra.java
 - https://github.com/navjindervirdee/Advanced-Shortest-Paths-Algorithms/blob/master/Contraction%20Hierarchies/DistPreprocessSmall.java
 
 */
 
-func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
+func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 	forwQ := &priorityQueueDijkstra{}
 	backQ := &priorityQueueDijkstra{}
 	df := make(map[int32]float64)
@@ -26,16 +26,15 @@ func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 	df[from] = 0.0
 	db[to] = 0.0
 
-
 	nmf := nodeMapCHDijkstra{}
 	nmb := nodeMapCHDijkstra{}
 
 	heap.Init(forwQ)
 	heap.Init(backQ)
 
-	fromNode := nmf.getCHDJ(CHGraph.OrigGraph[from])
+	fromNode := nmf.getCHDJ(ch.OrigGraph[from])
 	fromNode.rank = 0
-	toNode := nmb.getCHDJ(CHGraph.OrigGraph[to])
+	toNode := nmb.getCHDJ(ch.OrigGraph[to])
 	toNode.rank = 0
 	heap.Push(forwQ, fromNode)
 	heap.Push(backQ, toNode)
@@ -45,10 +44,10 @@ func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 	bestCommonVertex := int32(0)
 
 	cameFromf := make(map[int32]cameFromPair)
-	cameFromf[from] = cameFromPair{-1, EdgePair{}}
+	cameFromf[from] = cameFromPair{EdgePair{}, -1}
 
 	cameFromb := make(map[int32]cameFromPair)
-	cameFromb[to] = cameFromPair{-1, EdgePair{}}
+	cameFromb[to] = cameFromPair{EdgePair{}, -1}
 
 	frontFinished := false
 	backFinished := false
@@ -77,27 +76,24 @@ func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 			}
 		} else {
 			node := heap.Pop(frontier).(*dijkstraNode)
-			// nIDx := node.CHNode.IDx
 			if node.rank > estimate {
 				break
 			}
 			if turnF {
-				for _, edge := range CHGraph.OrigGraph[node.CHNode.IDx].OutEdges {
+				for _, edge := range ch.OrigGraph[node.CHNode.IDx].OutEdges {
 					toNIDx := edge.ToNodeIDX
 					cost := edge.Weight
-					if CHGraph.OrigGraph[node.CHNode.IDx].orderPos < CHGraph.OrigGraph[toNIDx].orderPos {
+					if ch.OrigGraph[node.CHNode.IDx].orderPos < ch.OrigGraph[toNIDx].orderPos {
 						// upward graph
 						newCost := cost + df[node.CHNode.IDx]
 						_, ok := df[toNIDx]
 						if !ok || newCost < df[toNIDx] {
 							df[toNIDx] = newCost
-							// etaf[toNIDx] = etaf[node.CHNode.IDx] + edge.Weight
-							// distf[toNIDx] = distf[node.CHNode.IDx] + edge.Dist
-							neighborNode := nmf.getCHDJ(CHGraph.OrigGraph[toNIDx])
+							neighborNode := nmf.getCHDJ(ch.OrigGraph[toNIDx])
 							neighborNode.rank = newCost
 							heap.Push(frontier, neighborNode)
 
-							cameFromf[toNIDx] = cameFromPair{node.CHNode.IDx, edge}
+							cameFromf[toNIDx] = cameFromPair{edge, node.CHNode.IDx}
 						}
 
 						_, ok = db[toNIDx]
@@ -106,39 +102,28 @@ func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 							if pathDistance < estimate {
 								estimate = pathDistance
 								bestCommonVertex = edge.ToNodeIDX
-								// eta = etaf[toNIDx] + etab[toNIDx]
-								// dist = distf[toNIDx] + distb[toNIDx]
+
 							}
 						}
 					}
 				}
 
-				// _, ok := db[nIDx]
-				// if ok {
-				// 	pathDistance := df[nIDx] + db[nIDx]
-				// 	if pathDistance < estimate {
-				// 		estimate = pathDistance
-				// 		bestCommonVertex = nIDx
-				// 	}
-				// }
-
 			} else {
-				for _, edge := range CHGraph.OrigGraph[node.CHNode.IDx].InEdges {
+				for _, edge := range ch.OrigGraph[node.CHNode.IDx].InEdges {
 					toNIDx := edge.ToNodeIDX
 					cost := edge.Weight
-					if CHGraph.OrigGraph[node.CHNode.IDx].orderPos < CHGraph.OrigGraph[toNIDx].orderPos {
-						// downward graph
+					if ch.OrigGraph[node.CHNode.IDx].orderPos < ch.OrigGraph[toNIDx].orderPos {
+						// upward graph
 						newCost := cost + db[node.CHNode.IDx]
 						_, ok := db[toNIDx]
 						if !ok || newCost < db[toNIDx] {
 							db[toNIDx] = newCost
-							// etab[toNIDx] = etab[node.CHNode.IDx] + edge.Weight
-							// distb[toNIDx] = distb[node.CHNode.IDx] + edge.Dist
-							neighborNode := nmf.getCHDJ(CHGraph.OrigGraph[toNIDx])
+
+							neighborNode := nmf.getCHDJ(ch.OrigGraph[toNIDx])
 							neighborNode.rank = newCost
 							heap.Push(frontier, neighborNode)
 
-							cameFromb[toNIDx] = cameFromPair{node.CHNode.IDx, edge}
+							cameFromb[toNIDx] = cameFromPair{edge, node.CHNode.IDx}
 						}
 
 						_, ok = df[toNIDx]
@@ -147,21 +132,12 @@ func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 							if pathDistance < estimate {
 								estimate = pathDistance
 								bestCommonVertex = edge.ToNodeIDX
-								// eta = etaf[toNIDx] + etab[toNIDx]
-								// dist = distf[toNIDx] + distb[toNIDx]
+
 							}
 						}
 					}
 				}
 
-				// _, ok := df[nIDx]
-				// if ok {
-				// 	pathDistance := db[nIDx] + df[nIDx]
-				// 	if pathDistance < estimate {
-				// 		estimate = pathDistance
-				// 		bestCommonVertex = nIDx
-				// 	}
-				// }
 			}
 
 		}
@@ -190,11 +166,11 @@ func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 		return []CHNode{}, -1, -1
 	}
 	// estimate dari bidirectional dijkstra pake shortcut edge jadi lebih cepet eta nya & gak akurat
-	path, eta, dist := createPath(bestCommonVertex, from, to, cameFromf, cameFromb)
+	path, eta, dist := ch.createPath(bestCommonVertex, from, to, cameFromf, cameFromb)
 	return path, eta, dist
 }
 
-func createPath(commonVertex int32, from, to int32,
+func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 	cameFromf, cameFromb map[int32]cameFromPair) ([]CHNode, float64, float64) {
 
 	// edges := []EdgePair{}
@@ -202,22 +178,22 @@ func createPath(commonVertex int32, from, to int32,
 	eta := 0.0
 	dist := 0.0
 	v := commonVertex
-	if CHGraph.OrigGraph[v].TrafficLight {
+	if ch.OrigGraph[v].TrafficLight {
 		eta += 2.0
 	}
 	for v != -1 {
 
 		if cameFromf[v].Edge.IsShortcut {
 
-			unpackBackward(cameFromf[v].Edge, &fPath, &eta, &dist)
+			ch.unpackBackward(cameFromf[v].Edge, &fPath, &eta, &dist)
 		} else {
 
-			if cameFromf[v].NodeIDx != -1 && CHGraph.OrigGraph[cameFromf[v].NodeIDx].TrafficLight {
+			if cameFromf[v].NodeIDx != -1 && ch.OrigGraph[cameFromf[v].NodeIDx].TrafficLight {
 				eta += 2.0
 			}
 			eta += cameFromf[v].Edge.Weight
 			dist += cameFromf[v].Edge.Dist
-			fPath = append(fPath, *CHGraph.OrigGraph[v])
+			fPath = append(fPath, ch.OrigGraph[v])
 		}
 		v = cameFromf[v].NodeIDx
 
@@ -229,16 +205,16 @@ func createPath(commonVertex int32, from, to int32,
 
 		if cameFromb[v].Edge.IsShortcut {
 
-			unpackForward(cameFromb[v].Edge, &bPath, &eta, &dist)
+			ch.unpackForward(cameFromb[v].Edge, &bPath, &eta, &dist)
 
 		} else {
 
-			if cameFromb[v].NodeIDx != -1 && CHGraph.OrigGraph[cameFromb[v].NodeIDx].TrafficLight {
+			if cameFromb[v].NodeIDx != -1 && ch.OrigGraph[cameFromb[v].NodeIDx].TrafficLight {
 				eta += 2.0
 			}
 			eta += cameFromb[v].Edge.Weight
 			dist += cameFromb[v].Edge.Dist
-			bPath = append(bPath, *CHGraph.OrigGraph[v])
+			bPath = append(bPath, ch.OrigGraph[v])
 		}
 		v = cameFromb[v].NodeIDx
 
@@ -261,131 +237,32 @@ func createPath(commonVertex int32, from, to int32,
 
 // buat forward dijkstra
 // dari common vertex ke source vertex
-func unpackBackward(edge EdgePair, path *[]CHNode, eta, dist *float64) {
+func (ch *ContractedGraph) unpackBackward(edge EdgePair, path *[]CHNode, eta, dist *float64) {
 	if !edge.IsShortcut {
-		if CHGraph.OrigGraph[edge.ToNodeIDX].TrafficLight {
+		if ch.OrigGraph[edge.ToNodeIDX].TrafficLight {
 			*eta += 2.0
 		}
 		*eta += edge.Weight
 		*dist += edge.Dist
-		*path = append(*path, *CHGraph.OrigGraph[edge.ToNodeIDX])
+		*path = append(*path, ch.OrigGraph[edge.ToNodeIDX])
 	} else {
-		unpackBackward(*edge.RemovedEdgeTwo, path, eta, dist)
-		unpackBackward(*edge.RemovedEdgeOne, path, eta, dist)
+		ch.unpackBackward(*edge.RemovedEdgeTwo, path, eta, dist)
+		ch.unpackBackward(*edge.RemovedEdgeOne, path, eta, dist)
 	}
 }
 
 // dari common vertex ke target vertex
-func unpackForward(edge EdgePair, path *[]CHNode, eta, dist *float64) {
+func (ch *ContractedGraph) unpackForward(edge EdgePair, path *[]CHNode, eta, dist *float64) {
 	if !edge.IsShortcut {
-		if CHGraph.OrigGraph[edge.ToNodeIDX].TrafficLight {
+		if ch.OrigGraph[edge.ToNodeIDX].TrafficLight {
 			*eta += 2.0
 		}
 		*eta += edge.Weight
 		*dist += edge.Dist
-		*path = append(*path, *CHGraph.OrigGraph[edge.ToNodeIDX])
+		*path = append(*path, ch.OrigGraph[edge.ToNodeIDX])
 	} else {
-		unpackForward(*edge.RemovedEdgeOne, path, eta, dist)
-		unpackForward(*edge.RemovedEdgeTwo, path, eta, dist)
+		ch.unpackForward(*edge.RemovedEdgeOne, path, eta, dist)
+		ch.unpackForward(*edge.RemovedEdgeTwo, path, eta, dist)
 
 	}
 }
-
-// salah gara gara orderpos
-// func ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64) {
-// 	forwQ := &priorityQueueDijkstra{}
-// 	backQ := &priorityQueueDijkstra{}
-// 	df := make(map[int32]float64)
-// 	db := make(map[int32]float64)
-// 	df[from] = 0.0
-// 	db[to] = 0.0
-
-// 	sf := make(map[int32]bool) // visited forward search
-// 	sb := make(map[int32]bool) // visited backward search
-
-// 	nmf := nodeMapCHDijkstra{}
-// 	nmb := nodeMapCHDijkstra{}
-
-// 	heap.Init(forwQ)
-// 	heap.Init(backQ)
-
-// 	fromNode := nmf.getCHDJ(CHGraph.OrigGraph[from])
-// 	toNode := nmb.getCHDJ(CHGraph.OrigGraph[to])
-// 	heap.Push(forwQ, fromNode)
-// 	heap.Push(backQ, toNode)
-
-// 	estimate := math.MaxFloat64
-
-// 	bestCommonVertex := int32(0)
-
-// 	cameFromf := make(map[int32]int32)
-// 	cameFromf[from] = -1
-
-// 	cameFromb := make(map[int32]int32)
-// 	cameFromb[to] = -1
-
-// 	for forwQ.Len() != 0 || backQ.Len() != 0 {
-// 		if forwQ.Len() != 0 {
-// 			v1 := heap.Pop(forwQ).(*dijkstraNode)
-
-// 			if df[v1.CHNode.IDx] <= estimate {
-// 				sf[v1.CHNode.IDx] = true
-// 				for _, edge := range CHGraph.OrigGraph[v1.CHNode.IDx].Edges {
-// 					toNIDx := edge.ToNodeIDX
-// 					cost := edge.Weight
-// 					if CHGraph.OrigGraph[v1.CHNode.IDx].orderPos < CHGraph.OrigGraph[toNIDx].orderPos {
-// 						// upward graph
-// 						newCost := cost + df[v1.CHNode.IDx]
-// 						_, ok := df[toNIDx]
-// 						if !ok ||  newCost < df[toNIDx] {
-// 							df[toNIDx] = newCost
-// 							heap.Push(forwQ, nmf.getCHDJ(CHGraph.OrigGraph[toNIDx]))
-// 							bestCommonVertex = edge.ToNodeIDX
-// 							cameFromf[toNIDx] = v1.CHNode.IDx
-// 						}
-// 					}
-// 				}
-// 			}
-
-// 			if sb[v1.CHNode.IDx] {
-// 				if df[v1.CHNode.IDx]+db[v1.CHNode.IDx] < estimate {
-// 					estimate = df[v1.CHNode.IDx] + db[v1.CHNode.IDx]
-// 				}
-// 			}
-// 		}
-
-// 		if backQ.Len() != 0 {
-// 			v2 := heap.Pop(backQ).(*dijkstraNode)
-// 			if db[v2.CHNode.IDx] <= estimate {
-// 				sb[v2.CHNode.IDx] = true
-// 				for _, edge := range CHGraph.RevGraph[v2.CHNode.IDx].Edges {
-// 					toNIDx := edge.ToNodeIDX
-// 					cost := edge.Weight
-// 					if CHGraph.RevGraph[v2.CHNode.IDx].orderPos > CHGraph.RevGraph[toNIDx].orderPos {
-// 						// downward graph
-// 						newCost := cost + db[v2.CHNode.IDx]
-// 						_, ok := db[toNIDx]
-// 						if !ok || newCost < db[toNIDx] {
-// 							db[toNIDx] = newCost
-// 							heap.Push(backQ, nmb.getCHDJ(CHGraph.RevGraph[toNIDx]))
-// 							bestCommonVertex = edge.ToNodeIDX
-// 							cameFromb[toNIDx] = v2.CHNode.IDx
-// 						}
-// 					}
-// 				}
-// 			}
-
-// 			if sf[v2.CHNode.IDx] {
-// 				if db[v2.CHNode.IDx]+df[v2.CHNode.IDx] < estimate {
-// 					estimate = db[v2.CHNode.IDx] + df[v2.CHNode.IDx]
-// 				}
-// 			}
-// 		}
-// 	}
-// 	if estimate == math.MaxFloat64 {
-// 		return []CHNode{}, -1
-// 	}
-
-// 	path := createPath(bestCommonVertex, from, to, cameFromf, cameFromb)
-// 	return path, estimate
-// }
