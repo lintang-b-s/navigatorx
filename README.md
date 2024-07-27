@@ -6,9 +6,9 @@
 1. download file openstreetmap pbf di: https://drive.google.com/file/d/1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO/view?usp=sharing
 2. taruh hasil download ke root project ini
 3. go run main.go
-(Minimal free ram 5 GB buat data diatas)
+(Minimal free ram 4 GB buat data diatas)
 4. request ke shortest path
-curl --location 'http://localhost:3000/api/navigations/shortestPathCH' \
+curl --location 'http://localhost:5000/api/navigations/shortestPath' \
 --header 'Content-Type: application/json' \
 --data '{
     "src_lat": -7.550261232598317,
@@ -23,7 +23,7 @@ Note: Source  & Destination Coordinate harus tempat di sekitaran provinsi yogyak
 
 ```
 
-
+#### Theory / Ref
 ```
 https://jlazarsfeld.github.io/ch.150.project/sections/7-ch-overview/
 https://dl.acm.org/doi/pdf/10.1145/971697.602266

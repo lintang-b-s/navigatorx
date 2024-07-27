@@ -21,8 +21,8 @@ referensi:
 func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode, float64, float64) {
 	forwQ := &priorityQueueDijkstra{}
 	backQ := &priorityQueueDijkstra{}
-	df := make(map[int32]float64)
-	db := make(map[int32]float64)
+	df := make(map[int32]float32)
+	db := make(map[int32]float32)
 	df[from] = 0.0
 	db[to] = 0.0
 
@@ -39,7 +39,7 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode, flo
 	heap.Push(forwQ, fromNode)
 	heap.Push(backQ, toNode)
 
-	estimate := math.MaxFloat64
+	estimate := float32(math.MaxFloat32)
 
 	bestCommonVertex := int32(0)
 
@@ -162,7 +162,7 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode, flo
 		}
 	}
 
-	if estimate == math.MaxFloat64 {
+	if estimate == float32(math.MaxFloat32) {
 		return []CHNode{}, -1, -1
 	}
 	// estimate dari bidirectional dijkstra pake shortcut edge jadi lebih cepet eta nya & gak akurat
@@ -175,8 +175,8 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 
 	// edges := []EdgePair{}
 	fPath := []CHNode{}
-	eta := 0.0
-	dist := 0.0
+	eta := float32(0.0)
+	dist := float32(0.0)
 	v := commonVertex
 	if ch.OrigGraph[v].TrafficLight {
 		eta += 2.0
@@ -232,12 +232,12 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 
 	}
 	fmt.Println(tf)
-	return path, eta, dist / 1000
+	return path, float64(eta), float64(dist / 1000)
 }
 
 // buat forward dijkstra
 // dari common vertex ke source vertex
-func (ch *ContractedGraph) unpackBackward(edge EdgePair, path *[]CHNode, eta, dist *float64) {
+func (ch *ContractedGraph) unpackBackward(edge EdgePair, path *[]CHNode, eta *float32, dist *float32) {
 	if !edge.IsShortcut {
 		if ch.OrigGraph[edge.ToNodeIDX].TrafficLight {
 			*eta += 2.0
@@ -252,7 +252,7 @@ func (ch *ContractedGraph) unpackBackward(edge EdgePair, path *[]CHNode, eta, di
 }
 
 // dari common vertex ke target vertex
-func (ch *ContractedGraph) unpackForward(edge EdgePair, path *[]CHNode, eta, dist *float64) {
+func (ch *ContractedGraph) unpackForward(edge EdgePair, path *[]CHNode, eta *float32, dist *float32) {
 	if !edge.IsShortcut {
 		if ch.OrigGraph[edge.ToNodeIDX].TrafficLight {
 			*eta += 2.0

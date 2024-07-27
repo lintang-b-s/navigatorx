@@ -35,7 +35,7 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeRtree(lat, lon float64) 
 		for _, nodeID := range street.NodesID {
 			nodeIdx := nodeID
 			node := ch.OrigGraph[nodeIdx]
-			nodeLoc := NewLocation(node.Lat, node.Lon)
+			nodeLoc := NewLocation(float64(node.Lat), float64(node.Lon))
 			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), int32(nodeIdx)})
 		}
 
@@ -84,7 +84,7 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeRtreeCH(lat, lon float64
 		for _, nodeID := range street.NodesID {
 			nodeIdx := nodeID
 			node := ch.OrigGraph[nodeIdx]
-			nodeLoc := NewLocation(node.Lat, node.Lon)
+			nodeLoc := NewLocation(float64(node.Lat), float64(node.Lon))
 			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), int32(nodeIdx)})
 		}
 

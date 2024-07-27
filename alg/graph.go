@@ -12,8 +12,8 @@ type Edge struct {
 }
 
 type Node struct {
-	tags   []string
-	Out_to []Edge
+	tags         []string
+	Out_to       []Edge
 	Lat, Lon     float64
 	ID           int64
 	StreetName   string
@@ -25,7 +25,7 @@ func RenderPath(path []CHNode) string {
 	coords := make([][]float64, 0)
 	for _, p := range path {
 		pT := p
-		coords = append(coords, []float64{pT.Lat, pT.Lon})
+		coords = append(coords, []float64{float64(pT.Lat), float64(pT.Lon)})
 	}
 	s = string(polyline.EncodeCoords(coords))
 	return s
@@ -77,4 +77,3 @@ func RoadTypeMaxSpeed(roadType string) float64 {
 		return 40
 	}
 }
-

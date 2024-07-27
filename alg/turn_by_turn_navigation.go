@@ -21,7 +21,7 @@ type Navigation struct {
 	TurnDist    float64 `json:"distance_before_turn"`
 	Instruction string  `json:"instruction"`
 	StreetName  string  `json:"street_name"`
-	Turn TURN `json:"turn"`
+	Turn        TURN    `json:"turn"`
 }
 
 func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
@@ -55,11 +55,11 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 			pathN3 := MakeSixDigitsAfterComa(pathN3, 6)
 			pathN4 := MakeSixDigitsAfterComa(pathN4, 6)
 
-			b1 := Bearing(util.TruncateFloat64(stNode.Lat, 6), util.TruncateFloat64(stNode.Lon, 6), util.TruncateFloat64(pathN3.Lat, 6),
-				util.TruncateFloat64(pathN3.Lon, 6))
+			b1 := Bearing(float64(stNode.Lat), float64(stNode.Lon), float64(pathN3.Lat),
+				float64(pathN3.Lon))
 
-			b2 := Bearing(util.TruncateFloat64(pathN3.Lat, 6), util.TruncateFloat64(pathN3.Lon, 6),
-				util.TruncateFloat64(pathN4.Lat, 6), util.TruncateFloat64(pathN4.Lon, 6))
+			b2 := Bearing(float64(pathN3.Lat), float64(pathN3.Lon),
+				float64(pathN4.Lat), float64(pathN4.Lon))
 
 			if b1 == 0 || b2 == 0 {
 				continue
@@ -74,11 +74,11 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 					pathN5 := p[j]
 					pathN5 = MakeSixDigitsAfterComa(pathN5, 6)
 					if pathN5.StreetName == pathN3.StreetName {
-						b3 := Bearing(util.TruncateFloat64(stNode.Lat, 6), util.TruncateFloat64(stNode.Lon, 6), util.TruncateFloat64(pathN3.Lat, 6),
-							util.TruncateFloat64(pathN3.Lon, 6))
+						b3 := Bearing(float64(stNode.Lat), float64(stNode.Lon), float64(pathN3.Lat),
+							float64(pathN3.Lon))
 
-						b4 := Bearing(util.TruncateFloat64(pathN3.Lat, 6), util.TruncateFloat64(pathN3.Lon, 6),
-							util.TruncateFloat64(pathN5.Lat, 6), util.TruncateFloat64(pathN5.Lon, 6))
+						b4 := Bearing(float64(pathN3.Lat), float64(pathN3.Lon),
+							float64(pathN5.Lat), float64(pathN5.Lon))
 
 						if b3 == 0 || b4 == 0 {
 							continue
@@ -107,8 +107,8 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 			currStDist = 0
 			currStETA = 0
 		} else {
-			stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
-			pathN2Loc := NewLocation(pathN2.Lat, pathN2.Lon)
+			stLoc := NewLocation(float64(startSTNodeBeforeTurn.Lat), float64(startSTNodeBeforeTurn.Lon))
+			pathN2Loc := NewLocation(float64(pathN2.Lat), float64(pathN2.Lon))
 			currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
 			maxSpeed := 30 * 1000 / 60
 			currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
@@ -117,8 +117,8 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 
 	beforeDestionationLat := p[len(p)-1].Lat
 	beforeDestionationLon := p[len(p)-1].Lon
-	stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
-	pathN2Loc := NewLocation(beforeDestionationLat, beforeDestionationLon)
+	stLoc := NewLocation(float64(startSTNodeBeforeTurn.Lat), float64(startSTNodeBeforeTurn.Lon))
+	pathN2Loc := NewLocation(float64(beforeDestionationLat), float64(beforeDestionationLon))
 	currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
 	maxSpeed := 30 * 1000 / 60
 	currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
@@ -167,15 +167,14 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 // biar itungan bearingnya ga ngaco
 func MakeSixDigitsAfterComa(n CHNode, precision int) CHNode {
 
-	if util.CountDecimalPlaces(n.Lat) != precision {
-		n.Lat = util.TruncateFloat64(n.Lat+0.000001, precision)
+	if util.CountDecimalPlacesF32(n.Lat) != precision {
+		n.Lat = util.TruncateFloat32(n.Lat+0.000001, precision)
 	}
-	if util.CountDecimalPlaces(n.Lon) != precision {
-		n.Lon = util.TruncateFloat64(n.Lon+0.000001, precision)
+	if util.CountDecimalPlacesF32(n.Lon) != precision {
+		n.Lon = util.TruncateFloat32(n.Lon+0.000001, precision)
 	}
 	return n
 }
-
 
 func GetTurnDirection(turn string) TURN {
 	switch turn {

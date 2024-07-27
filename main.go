@@ -53,8 +53,8 @@ func main() {
 	}()
 
 	fmt.Println("A* Ready!!")
-	fmt.Println("server started at :3000")
-	err := http.ListenAndServe(":3000", r)
+	fmt.Println("server started at :5000")
+	err := http.ListenAndServe(":5000", r)
 	fmt.Println(err)
 }
 
@@ -76,14 +76,14 @@ func bikinRtreeStreetNetwork(ways []alg.SurakartaWay, ch *alg.ContractedGraph, n
 	for i := range len(ways) {
 		way := ways[i]
 		for j := range len(way.NodesID) {
-			way.NodesID[j] = int64(nodeIdxMap[way.NodesID[j]])
+			way.NodesID[j] = int64(nodeIdxMap[way.NodesID[j]]) // harus int64 (osm.NodeId)
 		}
 	}
 
 	rtg := rtreego.NewTree(2, 25, 50) // 2 dimension, 25 min entries dan 50 max entries
 	rt := alg.NewRtree(rtg)
 	for _, way := range ways {
-		rt.StRtree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
+		rt.StRtree.Insert(&alg.StreetRect{Location: rtreego.Point{float64(way.CenterLoc[0]), float64(way.CenterLoc[1])},
 			Wormhole: nil,
 			Street:   &way})
 		bar.Add(1)

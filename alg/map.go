@@ -20,18 +20,10 @@ type Coordinate struct {
 	Lon float64 `json:"lon"`
 }
 
-type Bound struct {
-	MinLat float64 `json:"minlat"`
-	MaxLat float64 `json:"maxlat"`
-	MinLon float64 `json:"minlon"`
-	MaxLon float64 `json:"maxlon"`
-}
-
 type SurakartaWay struct {
-	CenterLoc []float64 // [lat, lon]
-	NodesID   []int64
-	ID    int64
-	Bound Bound
+	CenterLoc []float32 // [lat, lon]
+	NodesID   []int64   // ini harus int64 karena id dari osm int64  (osm.NodeId) 
+
 }
 
 // gak ada 1 way dengan multiple road type
@@ -107,7 +99,6 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 		// 	fmt.Println("membuat graph dari openstreetmap way ke: " + fmt.Sprint(idx))
 		// }
 		sWay := SurakartaWay{
-			ID:      int64(way.ID),
 			NodesID: make([]int64, 0),
 		}
 
@@ -197,13 +188,10 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 		}
 		sort.Sort(sort.Float64Slice(streetNodeLats))
 		sort.Sort(sort.Float64Slice(streetNodeLon))
-		sWay.Bound.MinLat = streetNodeLats[0]
-		sWay.Bound.MaxLat = streetNodeLats[len(streetNodeLats)-1]
-		sWay.Bound.MinLon = streetNodeLon[0]
-		sWay.Bound.MaxLon = streetNodeLon[len(streetNodeLon)-1]
+
 		// https://www.movable-type.co.uk/scripts/latlong.html
-		centerLat, centerLon := MidPoint(sWay.Bound.MinLat, sWay.Bound.MinLon, sWay.Bound.MaxLat, sWay.Bound.MaxLon)
-		sWay.CenterLoc = []float64{centerLat, centerLon}
+		centerLat, centerLon := MidPoint(streetNodeLats[0], streetNodeLon[0], streetNodeLats[len(streetNodeLats)-1], streetNodeLon[len(streetNodeLon)-1])
+		sWay.CenterLoc = []float32{float32(centerLat), float32(centerLon)}
 
 		surakartaWays = append(surakartaWays, sWay)
 		bar.Add(1)

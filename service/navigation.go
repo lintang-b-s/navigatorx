@@ -252,8 +252,8 @@ func (uc *NavigationService) ShortestPathETACH(ctx context.Context, srcLat, srcL
 	for n := range p {
 		pathN := p[n]
 		route = append(route, alg.Coordinate{
-			Lat: pathN.Lat,
-			Lon: pathN.Lon,
+			Lat: float64(pathN.Lat),
+			Lon: float64(pathN.Lon),
 		})
 	}
 
