@@ -3,28 +3,23 @@ package alg
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 
 	"github.com/DataDog/zstd"
 )
 
-
-
-func Encode(ch *[]CHNode) []byte {
+func Encode(sw []SurakartaWay) []byte {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
-	enc.Encode(ch)
-	fmt.Println(buf.Cap())
+	enc.Encode(sw)
 	return buf.Bytes()
 }
 
-func Decode(bb []byte) ([]CHNode, error) {
-	var ch []CHNode
+func Decode(bb []byte) ([]SurakartaWay, error) {
+	var ch []SurakartaWay
 	dec := gob.NewDecoder(bytes.NewReader(bb))
 	err := dec.Decode(&ch)
 	return ch, err
 }
-
 
 func Compress(bb []byte) ([]byte, error) {
 	var bbCompressed []byte

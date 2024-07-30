@@ -16,6 +16,7 @@ import (
 
 	_ "net/http/pprof"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/dhconnelly/rtreego"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -32,58 +33,38 @@ type nodeMapContainer struct {
 
 func main() {
 	surakartaWays, ch, nodeIdxMap := bikinGraphFromOpenstreetmap()
-	bikinRtreeStreetNetwork(surakartaWays, ch, nodeIdxMap)
+
+	db, err := pebble.Open("navigatorxDB", &pebble.Options{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	kvDB := alg.NewKVDB(db)
+	defer kvDB.Close()
+
+	kvDB.CreateStreetKV(surakartaWays, nodeIdxMap)
+
+	// bikinRtreeStreetNetwork(surakartaWays, ch, nodeIdxMap)
 	surakartaWays = nil
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Mount("/debug", middleware.Profiler())
 
-	navigatorSvc := service.NewNavigationService(ch)
+	navigatorSvc := service.NewNavigationService(ch, kvDB)
 	router.NavigatorRouter(r, navigatorSvc)
 
 	go func() {
 		ch.Contraction()
-
 		ch.AStarGraph = nil
 		ch.Ready = true
 		runtime.GC()
 		runtime.GC() // run garbage collection biar heap size nya ngurang wkwkwk
 		fmt.Println("Contraction Hieararchies + Bidirectional Dijkstra Ready!!")
-
-		// compress graph ch
-		// var err error
-		// var bbCompressed []byte
-		// // go func() {
-		// bbCompressed, err = alg.CompressGraph(&ch.OrigGraph)
-		// // }()
-
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-
-		// ch.CompressedCHGraph = bbCompressed
-		// bbCompressed = nil
-		// ch.OrigGraph = nil
-		// runtime.GC()
-		// runtime.GC()
-
-		// compress graph
-		// bbCompressed, err := alg.CompressGraph(ch.AStarGraph)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// ch.AStarGraph = nil
-		// runtime.GC()
-		// runtime.GC()
-
-		// ch.CompressedAstarGraph = bbCompressed
-
 	}()
 
 	fmt.Println("A* Ready!!")
 	fmt.Println("server started at :5000")
-	err := http.ListenAndServe(":5000", r)
+	err = http.ListenAndServe(":5000", r)
 	fmt.Println(err)
 }
 
@@ -94,7 +75,7 @@ func bikinRtreeStreetNetwork(ways []alg.SurakartaWay, ch *alg.ContractedGraph, n
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][4/6][reset] Membuat rtree entry dari osm way/edge ..."),
+		progressbar.OptionSetDescription("[cyan][4/7][reset] Membuat rtree entry dari osm way/edge ..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",
@@ -122,7 +103,7 @@ func bikinRtreeStreetNetwork(ways []alg.SurakartaWay, ch *alg.ContractedGraph, n
 }
 
 func bikinGraphFromOpenstreetmap() ([]alg.SurakartaWay, *alg.ContractedGraph, map[int64]int32) {
-	f, err := os.Open("./solo_jogja.osm.pbf") // sololama.osm.pbf
+	f, err := os.Open("./solo_jogja.osm.pbf")
 
 	if err != nil {
 		panic(err)
@@ -147,7 +128,7 @@ func bikinGraphFromOpenstreetmap() ([]alg.SurakartaWay, *alg.ContractedGraph, ma
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][1/6][reset] memproses openstreetmap way..."),
+		progressbar.OptionSetDescription("[cyan][1/7][reset] memproses openstreetmap way..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",

@@ -1,4 +1,3 @@
-valhalla/
 solo.osm.pbf
 onewayTypes.csv
 twoWayTypes.csv
@@ -15,3 +14,8 @@ jogja.osm.pbf
 
 road.txt
 catatan_filesystem_storage.txt
+san_frans_edge_only.osm.pbf
+navigatorxDB/
+
+
+
