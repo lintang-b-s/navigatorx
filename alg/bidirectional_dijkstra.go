@@ -161,7 +161,6 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 						}
 					}
 				}
-			
 
 			}
 
@@ -291,4 +290,3 @@ func (ch *ContractedGraph) unpackForward(edge EdgeCH, path *[]CHNode2, eta *floa
 
 	}
 }
-

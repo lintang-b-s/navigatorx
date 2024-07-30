@@ -107,7 +107,7 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][3/6][reset] Membuat graph..."),
+		progressbar.OptionSetDescription("[cyan][3/7][reset] Membuat graph..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",
@@ -118,7 +118,6 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 
 	for _, node := range nodes {
 
-	
 		ch.AStarGraph = append(ch.AStarGraph, CHNode{
 			OutEdges:     []EdgePair{},
 			IDx:          int32(count),
@@ -185,7 +184,6 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 			to := edge.ToNodeIDX
 			weight := edge.Weight
 
-		
 			ch.ContractedFirstInEdge[to] = append(ch.ContractedFirstInEdge[to], int32(inEdgeIDx))
 
 			ch.ContractedInEdges = append(ch.ContractedInEdges, EdgeCH{inEdgeIDx, weight,
@@ -232,7 +230,7 @@ func (ch *ContractedGraph) Contraction() {
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][6/6][reset] Membuat contracted graph (contraction hiearchies)..."),
+		progressbar.OptionSetDescription("[cyan][7/7][reset] Membuat contracted graph (contraction hiearchies)..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",
@@ -241,6 +239,12 @@ func (ch *ContractedGraph) Contraction() {
 			BarEnd:        "]",
 		}))
 
+	// outEdgeIDx := 0
+	// inEdgeIDx := 0
+
+	// prevIDx := int32(0)
+	// ch.ContractedFirstOutEdge = make([][]int32, len(ch.ContractedNodes))
+	// ch.ContractedFirstInEdge = make([][]int32, len(ch.ContractedNodes))
 
 	for nq.Len() != 0 {
 		polledNode := heap.Pop(nq).(*pqCHNode)
@@ -254,7 +258,50 @@ func (ch *ContractedGraph) Contraction() {
 			heap.Push(nq, &pqCHNode{NodeIDx: polledNode.NodeIDx, rank: priority})
 			continue
 		}
-		
+		// ch.ContractedNodes[prevIDx].NextNodeOrderIDx = polledNode.NodeIDx
+
+		// for i, outEdge := range ch.OrigGraph[polledNode.NodeIDx].OutEdges {
+		// 	toIdx := outEdge.ToNodeIDX
+		// 	// if i == 0 {
+		// 	// 	// first outEdge index
+		// 	// 	ch.ContractedFirstOutEdge[polledNode.NodeIDx] = int32(outEdgeIDx)
+		// 	// }
+		// 	ch.ContractedFirstOutEdge[polledNode.NodeIDx] = append(ch.ContractedFirstOutEdge[polledNode.NodeIDx], int32(outEdgeIDx))
+		// 	// add edge
+		// 	if outEdge.IsShortcut {
+		// 		ch.ContractedOutEdges = append(ch.ContractedOutEdges, EdgeCH{outEdge.Weight, outEdge.Dist, toIdx, true,
+		// 			outEdge.RemovedEdgeOne.EdgeIDx, outEdge.RemovedEdgeTwo.EdgeIDx})
+		// 	} else {
+		// 		ch.ContractedOutEdges = append(ch.ContractedOutEdges, EdgeCH{outEdge.Weight, outEdge.Dist, toIdx, false, -1, -1})
+		// 	}
+
+		// 	ch.OrigGraph[polledNode.NodeIDx].OutEdges[i].EdgeIDx = int32(outEdgeIDx)
+		// 	outEdgeIDx++
+		// }
+
+		// for i, inEdge := range ch.OrigGraph[polledNode.NodeIDx].InEdges {
+		// 	toIdx := inEdge.ToNodeIDX
+		// 	// if i == 0 {
+		// 	// 	// first outEdge index
+		// 	// 	ch.ContractedFirstInEdge[toIdx] = int32(inEdgeIDx)
+		// 	// }
+		// 	ch.ContractedFirstInEdge[toIdx] = append(ch.ContractedFirstInEdge[toIdx], int32(inEdgeIDx))
+
+		// 	// add edge
+		// 	if inEdge.IsShortcut {
+		// 		ch.ContractedInEdges = append(ch.ContractedInEdges, EdgeCH{inEdge.Weight, inEdge.Dist, polledNode.NodeIDx, true,
+		// 			inEdge.RemovedEdgeOne.EdgeIDx, inEdge.RemovedEdgeTwo.EdgeIDx})
+		// 	} else {
+		// 		ch.ContractedInEdges = append(ch.ContractedInEdges, EdgeCH{inEdge.Weight, inEdge.Dist, polledNode.NodeIDx, false, -1, -1})
+		// 	}
+
+		// 	ch.OrigGraph[polledNode.NodeIDx].InEdges[i].EdgeIDx = int32(inEdgeIDx)
+
+		// 	inEdgeIDx++
+		// }
+		// prevIDx = polledNode.NodeIDx
+
+		// ch.OrigGraph[polledNode.NodeIDx].orderPos = orderNum
 
 		ch.ContractedNodes[polledNode.NodeIDx].OrderPos = orderNum
 
@@ -274,7 +321,6 @@ func (ch *ContractedGraph) Contraction() {
 	end := time.Now().Sub(st)
 	fmt.Println("lama preprocessing contraction hierarchies: : ", end.Minutes(), " menit")
 }
-
 
 func (ch *ContractedGraph) contractNode(nodeIDx int32, level int, isContracted bool, contracted []bool) {
 
@@ -374,7 +420,6 @@ func (ch *ContractedGraph) findAndHandleShortcuts(nodeIDx int32, shortcutHandler
 	return degree, shortcutCount, originalEdgesCount, nil
 }
 
-
 func (ch *ContractedGraph) disconnect(nodeIDx int32) {
 	// gak usah dihapus edge nya , biar map matching nya bener
 	ch.removeContractedNode(nodeIDx)
@@ -440,7 +485,7 @@ func (ch *ContractedGraph) addShortcut(fromNodeIDx, toNodeIDx int32, weight floa
 		}
 	}
 	if !dup {
-		
+
 		currEdgeIDx := int32(len(ch.ContractedOutEdges))
 		ch.ContractedOutEdges = append(ch.ContractedOutEdges, EdgeCH{currEdgeIDx, weight, float32(dist), toNodeIDx, true,
 			removedEdgeOne.EdgeIDx, removedEdgeTwo.EdgeIDx})
@@ -511,7 +556,6 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 				ind = append(ind, i)
 			}
 
-	
 		}
 		ind = reverse(ind)
 		for _, edgeIDx := range ind {
@@ -522,7 +566,6 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 
 	}
 
-
 	ch.Metadata.degrees[nodeIDx] = 0
 	ch.Metadata.InEdgeOrigCount[nodeIDx] = 0
 	ch.Metadata.OutEdgeOrigCount[nodeIDx] = 0
@@ -532,8 +575,6 @@ func quickDelete(idx int, g *[]int32, dir string) {
 	(*g)[idx] = (*g)[len(*g)-1]
 	*g = (*g)[:len(*g)-1]
 }
-
-
 
 func (ch *ContractedGraph) calculatePriority(nodeIDx int32, contracted []bool) float64 {
 
@@ -563,7 +604,7 @@ func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][5/6][reset] Membuat node ordering (contraction hiearchies)..."),
+		progressbar.OptionSetDescription("[cyan][6/7][reset] Membuat node ordering (contraction hiearchies)..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",
@@ -573,7 +614,6 @@ func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 		}))
 
 	contracted := make([]bool, ch.Metadata.NodeCount)
-
 
 	for nodeIDx, _ := range ch.ContractedNodes {
 		// if (isContracted(node)) {
@@ -661,11 +701,11 @@ func (ch *ContractedGraph) IsAstarLoaded() bool {
 
 func (ch *ContractedGraph) LoadAstarGraph() error {
 	fmt.Printf("A* compressed Graph size: %d\n", len(ch.CompressedAstarGraph))
-	loadedCH, err := LoadCHGraph(ch.CompressedAstarGraph)
-	if err != nil {
-		return err
-	}
-	ch.AStarGraph = loadedCH
+	// loadedCH, err := LoadCHGraph(ch.CompressedAstarGraph)
+	// if err != nil {
+	// 	return err
+	// }
+	// ch.AStarGraph = loadedCH
 
 	ch.IsAStarLoaded = true
 	return nil

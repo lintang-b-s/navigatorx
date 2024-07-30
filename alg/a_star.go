@@ -2,7 +2,6 @@ package alg
 
 import (
 	"container/heap"
-	"fmt"
 
 	"github.com/twpayne/go-polyline"
 )
@@ -29,7 +28,6 @@ func (nm nodeMapCH) getCH(p CHNode) *astarNodeCH {
 
 // https://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string, eta float64, found bool, dist float64) {
-	fmt.Printf("ch len: %d\n", len(ch.AStarGraph))
 	nm := nodeMapCH{}
 	nq := &priorityQueueCH{}
 	heap.Init(nq)

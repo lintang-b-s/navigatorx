@@ -22,8 +22,7 @@ type Coordinate struct {
 
 type SurakartaWay struct {
 	CenterLoc []float32 // [lat, lon]
-	NodesID   []int64   // ini harus int64 karena id dari osm int64  (osm.NodeId) 
-
+	NodesID   []int64   // ini harus int64 karena id dari osm int64  (osm.NodeId)
 }
 
 // gak ada 1 way dengan multiple road type
@@ -38,7 +37,7 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][2/6][reset] Menyimpan way & node Openstreetmap ..."),
+		progressbar.OptionSetDescription("[cyan][2/7][reset] Menyimpan way & node Openstreetmap ..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",
@@ -209,6 +208,7 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 	fmt.Println("")
 	return surakartaWays, surakartaNodes
 }
+
 func WriteWayTypeToCsv(wayTypesMap map[string]int64, filename string) {
 	wayTypesArr := make([][]string, len(wayTypesMap)+1)
 

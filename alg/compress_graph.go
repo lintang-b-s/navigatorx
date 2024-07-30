@@ -1,43 +1,20 @@
 package alg
 
-import "fmt"
-
-func CompressGraph(ch *[]CHNode) ([]byte, error) {
-	bb := Encode(ch)
+func CompressWay(sw []SurakartaWay) ([]byte, error) {
+	bb := Encode(sw)
 	bbCompressed, err := Compress(bb)
 	if err != nil {
 		return []byte{}, err
 	}
 	return bbCompressed, nil
 }
-
-func LoadCHGraph(bbCompressed []byte) ([]CHNode, error) {
-	var ch []CHNode
+func LoadWay(bbCompressed []byte) ([]SurakartaWay, error) {
+	var sw []SurakartaWay
 	bb, err := Decompress(bbCompressed)
 	if err != nil {
-		return nil, err
+		return []SurakartaWay{}, err
 	}
-	fmt.Printf("Decompressed size: %d\n", len(bb))
-	ch, err = Decode(bb)
+	sw, err = Decode(bb)
 
-	return ch, err
+	return sw, err
 }
-
-// func CompressCHGraph(ch []alg.CHNode) ([]byte, error) {
-// 	bb := Encode(ch)
-// 	bbCompressed, err := Compress(bb.Bytes())
-// 	if err != nil {
-// 		return []byte{}, err
-// 	}
-// 	return bbCompressed, nil
-// }
-
-// func LoadCHGraph(bbCompressed []byte, ch *[]alg.CHNode) error {
-// 	bb, err := Decompress(bbCompressed)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	DecodeCHGraph(bb, ch)
-
-// 	return err
-// }

@@ -9,8 +9,7 @@ import (
 )
 
 type ContractedGraph interface {
-	SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNodeIdx int32, err error)
-	// SnapLocationToRoadNetworkNodeRtreeCH(lat, lon float64, dir string) (snappedRoadNodeIdx int32, err error)
+	SnapLocationToRoadNetworkNodeH3(ways []alg.SurakartaWay, wantToSnap []float64) int32
 	ShortestPathBiDijkstra(from, to int32) ([]alg.CHNode2, float64, float64)
 	AStarCH(from, to int32) (pathN []alg.CHNode, path string, eta float64, found bool, dist float64)
 	IsChReady() bool
@@ -22,13 +21,19 @@ type ContractedGraph interface {
 	UnloadAstarGraph() error
 }
 
-type NavigationService struct {
-	CH ContractedGraph
+type KVDB interface {
+	GetNearestStreetsFromPointCoord(lat, lon float64) ([]alg.SurakartaWay, error)
 }
 
-func NewNavigationService(contractedGraph ContractedGraph) *NavigationService {
-	return &NavigationService{CH: contractedGraph}
+type NavigationService struct {
+	CH ContractedGraph
+	KV KVDB
 }
+
+func NewNavigationService(contractedGraph ContractedGraph, kv KVDB) *NavigationService {
+	return &NavigationService{CH: contractedGraph, KV: kv}
+}
+
 func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon float64,
 	dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, bool, error) {
 
@@ -42,11 +47,11 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	}
 
 	var err error
-	fromSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
+	fromSurakartaNode, err := uc.SnapLocToStreetNode(from.Lat, from.Lon)
 	if err != nil {
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
 	}
-	toSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
+	toSurakartaNode, err := uc.SnapLocToStreetNode(to.Lat, to.Lon)
 	if err != nil {
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
 	}
@@ -76,7 +81,7 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 
-	var n  = []alg.Navigation{}
+	var n = []alg.Navigation{}
 	if isCH {
 		n, _ = alg.CreateTurnByTurnNavigationCH(pN)
 	} else {
@@ -84,6 +89,16 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	}
 
 	return p, dist, n, found, route, eta, isCH, nil
+}
+
+func (uc *NavigationService) SnapLocToStreetNode(lat, lon float64) (int32, error) {
+	ways, err := uc.KV.GetNearestStreetsFromPointCoord(lat, lon)
+	if err != nil {
+		return 0, err
+	}
+	streetNodeIDx := uc.CH.SnapLocationToRoadNetworkNodeH3(ways, []float64{lat, lon})
+
+	return streetNodeIDx, nil
 }
 
 type ShortestPathResult struct {
@@ -116,17 +131,17 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	}
 
 	var err error
-	fromSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
+	fromSurakartaNode, err := uc.SnapLocToStreetNode(from.Lat, from.Lon)
 	if err != nil {
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
 	}
 
-	alternativeStreetSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(alternativeStreet.Lat, alternativeStreet.Lon)
+	alternativeStreetSurakartaNode, err := uc.SnapLocToStreetNode(alternativeStreet.Lat, alternativeStreet.Lon)
 	if err != nil {
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
 	}
 
-	toSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
+	toSurakartaNode, err := uc.SnapLocToStreetNode(to.Lat, to.Lon)
 	if err != nil {
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
 	}
@@ -240,10 +255,10 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 
-	var n =  []alg.Navigation{}
+	var n = []alg.Navigation{}
 	if !isCH {
 		n, err = alg.CreateTurnByTurnNavigation(concatedPaths)
-	}else {
+	} else {
 		n, err = alg.CreateTurnByTurnNavigationCH(concatedPathsCH)
 	}
 	// var n []alg.Navigation
@@ -268,11 +283,11 @@ func (uc *NavigationService) ShortestPathETACH(ctx context.Context, srcLat, srcL
 
 	var err error
 
-	fromSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(from.Lat, from.Lon)
+	fromSurakartaNode, err := uc.SnapLocToStreetNode(from.Lat, from.Lon)
 	if err != nil {
 		return "", []alg.Navigation{}, []alg.Coordinate{}, 0.0, 0.0, nil
 	}
-	toSurakartaNode, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(to.Lat, to.Lon)
+	toSurakartaNode, err := uc.SnapLocToStreetNode(to.Lat, to.Lon)
 	if err != nil {
 		return "", []alg.Navigation{}, []alg.Coordinate{}, 0.0, 0.0, nil
 	}

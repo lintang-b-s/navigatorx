@@ -4,6 +4,8 @@ import (
 	"github.com/dhconnelly/rtreego"
 )
 
+// sebelum pake Uber h3 buat spatial index, project ini pake R-tree 
+
 var tol = 0.0001
 
 type StreetRect struct {
