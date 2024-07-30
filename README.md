@@ -32,3 +32,4 @@ http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 ```
 
 
+go build -gcflags "-m -l" *.go

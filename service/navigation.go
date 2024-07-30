@@ -10,10 +10,16 @@ import (
 
 type ContractedGraph interface {
 	SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNodeIdx int32, err error)
-	SnapLocationToRoadNetworkNodeRtreeCH(lat, lon float64, dir string) (snappedRoadNodeIdx int32, err error)
-	ShortestPathBiDijkstra(from, to int32) ([]alg.CHNode, float64, float64)
+	// SnapLocationToRoadNetworkNodeRtreeCH(lat, lon float64, dir string) (snappedRoadNodeIdx int32, err error)
+	ShortestPathBiDijkstra(from, to int32) ([]alg.CHNode2, float64, float64)
 	AStarCH(from, to int32) (pathN []alg.CHNode, path string, eta float64, found bool, dist float64)
 	IsChReady() bool
+	IsCHLoaded() bool
+	LoadGraph() error
+	UnloadGraph() error
+	IsAstarLoaded() bool
+	LoadAstarGraph() error
+	UnloadAstarGraph() error
 }
 
 type NavigationService struct {
@@ -45,21 +51,24 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
 	}
 
-	var pN = []alg.CHNode{}
+	var pN = []alg.CHNode2{}
+	var ppp = []alg.CHNode{}
 	var p string
 	var eta float64
 	var found bool
 	var dist float64
 	var isCH bool
 	if uc.CH.IsChReady() {
+
 		pN, eta, dist = uc.CH.ShortestPathBiDijkstra(fromSurakartaNode, toSurakartaNode)
-		p = alg.RenderPath(pN)
+		p = alg.RenderPath2(pN)
 		if eta != -1 {
 			found = true
 		}
 		isCH = true
 	} else {
-		pN, p, eta, found, dist = uc.CH.AStarCH(fromSurakartaNode, toSurakartaNode)
+
+		ppp, p, eta, found, dist = uc.CH.AStarCH(fromSurakartaNode, toSurakartaNode)
 	}
 
 	if !found {
@@ -67,18 +76,24 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 
-	n, _ := alg.CreateTurnByTurnNavigation(pN)
+	var n  = []alg.Navigation{}
+	if isCH {
+		n, _ = alg.CreateTurnByTurnNavigationCH(pN)
+	} else {
+		n, _ = alg.CreateTurnByTurnNavigation(ppp)
+	}
 
 	return p, dist, n, found, route, eta, isCH, nil
 }
 
 type ShortestPathResult struct {
-	Paths []alg.CHNode
-	ETA   float64
-	Found bool
-	Dist  float64
-	Index int
-	IsCH  bool
+	PathsCH []alg.CHNode2
+	Paths   []alg.CHNode
+	ETA     float64
+	Found   bool
+	Dist    float64
+	Index   int
+	IsCH    bool
 }
 
 func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Context, srcLat, srcLon float64,
@@ -129,7 +144,8 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	go func() {
 
 		defer wg.Done()
-		var pN = []alg.CHNode{}
+		var pN = []alg.CHNode2{}
+		var ppp = []alg.CHNode{}
 		var eta float64
 		var found bool
 		var dist float64
@@ -142,22 +158,24 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 			}
 			isCH = true
 		} else {
-			pN, _, eta, found, dist = uc.CH.AStarCH(fromSurakartaNode, alternativeStreetSurakartaNode)
+			ppp, _, eta, found, dist = uc.CH.AStarCH(fromSurakartaNode, alternativeStreetSurakartaNode)
 		}
 		pathChan <- ShortestPathResult{
-			Paths: pN,
-			ETA:   eta,
-			Found: found,
-			Dist:  dist,
-			Index: 0,
-			IsCH:  isCH,
+			PathsCH: pN,
+			Paths:   ppp,
+			ETA:     eta,
+			Found:   found,
+			Dist:    dist,
+			Index:   0,
+			IsCH:    isCH,
 		}
 	}()
 
 	go func() {
 
 		defer wg.Done()
-		var pN = []alg.CHNode{}
+		var pN = []alg.CHNode2{}
+		var ppp = []alg.CHNode{}
 		var eta float64
 		var found bool
 		var dist float64
@@ -170,16 +188,17 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 			}
 			isCH = true
 		} else {
-			pN, _, eta, found, dist = uc.CH.AStarCH(alternativeStreetSurakartaNode, toSurakartaNode)
+			ppp, _, eta, found, dist = uc.CH.AStarCH(alternativeStreetSurakartaNode, toSurakartaNode)
 
 		}
 		pathChan <- ShortestPathResult{
-			Paths: pN,
-			ETA:   eta,
-			Found: found,
-			Dist:  dist,
-			Index: 1,
-			IsCH:  isCH,
+			PathsCH: pN,
+			Paths:   ppp,
+			ETA:     eta,
+			Found:   found,
+			Dist:    dist,
+			Index:   1,
+			IsCH:    isCH,
 		}
 	}()
 
@@ -200,9 +219,15 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	close(pathChan)
 
 	concatedPaths := []alg.CHNode{}
+	concatedPathsCH := []alg.CHNode2{}
 	paths[0].Paths = paths[0].Paths[:len(paths[0].Paths)-1] // exclude start node dari paths[1]
-	concatedPaths = append(concatedPaths, paths[0].Paths...)
-	concatedPaths = append(concatedPaths, paths[1].Paths...)
+	if !paths[0].IsCH {
+		concatedPaths = append(concatedPaths, paths[0].Paths...)
+		concatedPaths = append(concatedPaths, paths[1].Paths...)
+	} else {
+		concatedPathsCH = append(concatedPathsCH, paths[0].PathsCH...)
+		concatedPathsCH = append(concatedPathsCH, paths[1].PathsCH...)
+	}
 
 	eta := paths[0].ETA + paths[1].ETA
 	dist := paths[0].Dist + paths[1].Dist
@@ -215,7 +240,13 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 
-	n, err := alg.CreateTurnByTurnNavigation(concatedPaths)
+	var n =  []alg.Navigation{}
+	if !isCH {
+		n, err = alg.CreateTurnByTurnNavigation(concatedPaths)
+	}else {
+		n, err = alg.CreateTurnByTurnNavigationCH(concatedPathsCH)
+	}
+	// var n []alg.Navigation
 	if err != nil {
 		return alg.RenderPath(concatedPaths), dist, n, found, route, eta, isCH, nil
 	}
@@ -257,7 +288,7 @@ func (uc *NavigationService) ShortestPathETACH(ctx context.Context, srcLat, srcL
 		})
 	}
 
-	n, _ := alg.CreateTurnByTurnNavigation(p)
+	n, _ := alg.CreateTurnByTurnNavigationCH(p)
 
-	return alg.RenderPath(p), n, route, eta, dist, nil
+	return alg.RenderPath2(p), n, route, eta, dist, nil
 }

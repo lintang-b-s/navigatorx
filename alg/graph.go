@@ -19,6 +19,16 @@ type Node struct {
 	StreetName   string
 	TrafficLight bool
 }
+func RenderPath2(path []CHNode2) string {
+	s := ""
+	coords := make([][]float64, 0)
+	for _, p := range path {
+		pT := p
+		coords = append(coords, []float64{float64(pT.Lat), float64(pT.Lon)})
+	}
+	s = string(polyline.EncodeCoords(coords))
+	return s
+}
 
 func RenderPath(path []CHNode) string {
 	s := ""

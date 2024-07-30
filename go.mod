@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/datadog/czlib v0.0.0-20160811164712-4bc9a24e37f2 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
