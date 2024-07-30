@@ -2,7 +2,8 @@ package alg
 
 import "github.com/dhconnelly/rtreego"
 
-func ProjectPointToLine(nearestStPoint CHNode, secondNearestStPoint CHNode,
+
+func ProjectPointToLine(nearestStPoint CHNode2, secondNearestStPoint CHNode2,
 	snap rtreego.Point) Coordinate {
 
 	// proyeksi gps ke segment jalan antara 2 point tadi (ortoghonal projection)
@@ -14,3 +15,6 @@ func ProjectPointToLine(nearestStPoint CHNode, secondNearestStPoint CHNode,
 	projection := Coordinate{float64(secondNearestStPoint.Lat) + ab.Lat*ad, float64(secondNearestStPoint.Lon) + ab.Lon*ad}
 	return projection
 }
+
+
+

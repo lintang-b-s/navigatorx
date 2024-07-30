@@ -44,12 +44,41 @@ func main() {
 
 	go func() {
 		ch.Contraction()
+
 		ch.AStarGraph = nil
 		ch.Ready = true
 		runtime.GC()
 		runtime.GC() // run garbage collection biar heap size nya ngurang wkwkwk
-
 		fmt.Println("Contraction Hieararchies + Bidirectional Dijkstra Ready!!")
+
+		// compress graph ch
+		// var err error
+		// var bbCompressed []byte
+		// // go func() {
+		// bbCompressed, err = alg.CompressGraph(&ch.OrigGraph)
+		// // }()
+
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+
+		// ch.CompressedCHGraph = bbCompressed
+		// bbCompressed = nil
+		// ch.OrigGraph = nil
+		// runtime.GC()
+		// runtime.GC()
+
+		// compress graph
+		// bbCompressed, err := alg.CompressGraph(ch.AStarGraph)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// ch.AStarGraph = nil
+		// runtime.GC()
+		// runtime.GC()
+
+		// ch.CompressedAstarGraph = bbCompressed
+
 	}()
 
 	fmt.Println("A* Ready!!")

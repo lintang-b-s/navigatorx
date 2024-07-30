@@ -2,45 +2,47 @@ package alg
 
 import (
 	"container/heap"
+	"fmt"
 
 	"github.com/twpayne/go-polyline"
 )
 
 type astarNodeCH struct {
 	rank   float32
-	chNode *CHNode
+	chNode CHNode
 	parent *astarNodeCH
 	index  int
 }
 
-type nodeMapCH map[*CHNode]*astarNodeCH
+type nodeMapCH map[int32]*astarNodeCH
 
-func (nm nodeMapCH) getCH(p *CHNode) *astarNodeCH {
-	n, ok := nm[p]
+func (nm nodeMapCH) getCH(p CHNode) *astarNodeCH {
+	n, ok := nm[p.IDx]
 
 	if !ok {
 		n = &astarNodeCH{chNode: p}
 
-		nm[p] = n
+		nm[p.IDx] = n
 	}
 	return n
 }
 
 // https://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string, eta float64, found bool, dist float64) {
+	fmt.Printf("ch len: %d\n", len(ch.AStarGraph))
 	nm := nodeMapCH{}
 	nq := &priorityQueueCH{}
 	heap.Init(nq)
 	fromNode := nm.getCH(ch.AStarGraph[from])
 	fromNode.rank = 0
 	heap.Push(nq, fromNode)
-	costSoFar := make(map[*CHNode]float32)
-	costSoFar[ch.AStarGraph[from]] = 0.0
-	distSoFar := make(map[*CHNode]float32)
-	distSoFar[ch.AStarGraph[from]] = 0.0
+	costSoFar := make(map[int32]float32)
+	costSoFar[ch.AStarGraph[from].IDx] = 0.0
+	distSoFar := make(map[int32]float32)
+	distSoFar[ch.AStarGraph[from].IDx] = 0.0
 
-	cameFrom := make(map[*CHNode]*CHNode)
-	cameFrom[ch.AStarGraph[from]] = nil
+	cameFrom := make(map[int32]*CHNode)
+	cameFrom[ch.AStarGraph[from].IDx] = nil
 
 	for {
 		if nq.Len() == 0 {
@@ -58,10 +60,10 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 				if curr.chNode.TrafficLight {
 					etaTraffic += 2.0
 				}
-				path = append(path, *curr.chNode)
-				curr = nm.getCH(cameFrom[curr.chNode])
+				path = append(path, curr.chNode)
+				curr = nm.getCH(ch.AStarGraph[cameFrom[curr.chNode.IDx].IDx])
 			}
-			path = append(path, *ch.AStarGraph[from])
+			path = append(path, ch.AStarGraph[from])
 			path = reverseCH(path)
 			coords := make([][]float64, 0)
 
@@ -72,20 +74,20 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 			}
 			s = string(polyline.EncodeCoords(coords))
 
-			return pathN, s, float64(costSoFar[current.chNode]) + etaTraffic, true, float64(distSoFar[current.chNode] / 1000)
+			return pathN, s, float64(costSoFar[current.chNode.IDx]) + etaTraffic, true, float64(distSoFar[current.chNode.IDx] / 1000)
 		}
 
 		for _, neighbor := range current.chNode.OutEdges {
-			newCost := costSoFar[current.chNode] + neighbor.Weight
-			dist := distSoFar[current.chNode] + neighbor.Dist
+			newCost := costSoFar[current.chNode.IDx] + neighbor.Weight
+			dist := distSoFar[current.chNode.IDx] + neighbor.Dist
 			neighborP := ch.AStarGraph[neighbor.ToNodeIDX]
 			neighborNode := nm.getCH(neighborP)
-			_, ok := costSoFar[neighborP]
-			if !ok || newCost < costSoFar[neighborP] {
-				costSoFar[neighborP] = newCost
-				distSoFar[neighborP] = dist
-				cameFrom[neighborP] = current.chNode
-				priority := newCost + float32(neighborP.PathEstimatedCostETA(*ch.AStarGraph[to]))
+			_, ok := costSoFar[neighborP.IDx]
+			if !ok || newCost < costSoFar[neighborP.IDx] {
+				costSoFar[neighborP.IDx] = newCost
+				distSoFar[neighborP.IDx] = dist
+				cameFrom[neighborP.IDx] = &ch.AStarGraph[current.chNode.IDx]
+				priority := newCost + float32(neighborP.PathEstimatedCostETA(ch.AStarGraph[to]))
 				neighborNode.rank = priority
 				heap.Push(nq, neighborNode)
 			}
