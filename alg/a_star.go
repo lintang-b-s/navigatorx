@@ -7,7 +7,7 @@ import (
 )
 
 type astarNodeCH struct {
-	rank   float32
+	rank   float64
 	chNode CHNode
 	parent *astarNodeCH
 	index  int
@@ -34,9 +34,9 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 	fromNode := nm.getCH(ch.AStarGraph[from])
 	fromNode.rank = 0
 	heap.Push(nq, fromNode)
-	costSoFar := make(map[int32]float32)
+	costSoFar := make(map[int32]float64)
 	costSoFar[ch.AStarGraph[from].IDx] = 0.0
-	distSoFar := make(map[int32]float32)
+	distSoFar := make(map[int32]float64)
 	distSoFar[ch.AStarGraph[from].IDx] = 0.0
 
 	cameFrom := make(map[int32]*CHNode)
@@ -68,11 +68,11 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 			pathN := []CHNode{}
 			for _, p := range path {
 				pathN = append(pathN, p)
-				coords = append(coords, []float64{float64(p.Lat), float64(p.Lon)})
+				coords = append(coords, []float64{p.Lat, p.Lon})
 			}
 			s = string(polyline.EncodeCoords(coords))
 
-			return pathN, s, float64(costSoFar[current.chNode.IDx]) + etaTraffic, true, float64(distSoFar[current.chNode.IDx] / 1000)
+			return pathN, s, costSoFar[current.chNode.IDx] + etaTraffic, true, distSoFar[current.chNode.IDx] / 1000
 		}
 
 		for _, neighbor := range current.chNode.OutEdges {
@@ -85,7 +85,7 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 				costSoFar[neighborP.IDx] = newCost
 				distSoFar[neighborP.IDx] = dist
 				cameFrom[neighborP.IDx] = &ch.AStarGraph[current.chNode.IDx]
-				priority := newCost + float32(neighborP.PathEstimatedCostETA(ch.AStarGraph[to]))
+				priority := newCost + neighborP.PathEstimatedCostETA(ch.AStarGraph[to])
 				neighborNode.rank = priority
 				heap.Push(nq, neighborNode)
 			}

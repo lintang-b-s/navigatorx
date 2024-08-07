@@ -22,9 +22,7 @@ type Navigation struct {
 	Instruction string  `json:"instruction"`
 	StreetName  string  `json:"street_name"`
 	Turn        TURN    `json:"turn"`
-
 }
-
 
 func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 	n := []Navigation{}
@@ -57,11 +55,11 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 			pathN3 := MakeSixDigitsAfterComa2(pathN3, 6)
 			pathN4 := MakeSixDigitsAfterComa2(pathN4, 6)
 
-			b1 := Bearing(float64(stNode.Lat), float64(stNode.Lon), float64(pathN3.Lat),
-				float64(pathN3.Lon))
+			b1 := Bearing(stNode.Lat, stNode.Lon, pathN3.Lat,
+				pathN3.Lon)
 
-			b2 := Bearing(float64(pathN3.Lat), float64(pathN3.Lon),
-				float64(pathN4.Lat), float64(pathN4.Lon))
+			b2 := Bearing(pathN3.Lat, pathN3.Lon,
+				pathN4.Lat, pathN4.Lon)
 
 			if b1 == 0 || b2 == 0 {
 				continue
@@ -76,11 +74,11 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 					pathN5 := p[j]
 					pathN5 = MakeSixDigitsAfterComa2(pathN5, 6)
 					if pathN5.StreetName == pathN3.StreetName {
-						b3 := Bearing(float64(stNode.Lat), float64(stNode.Lon), float64(pathN3.Lat),
-							float64(pathN3.Lon))
+						b3 := Bearing(stNode.Lat, stNode.Lon, pathN3.Lat,
+							pathN3.Lon)
 
-						b4 := Bearing(float64(pathN3.Lat), float64(pathN3.Lon),
-							float64(pathN5.Lat), float64(pathN5.Lon))
+						b4 := Bearing(pathN3.Lat, pathN3.Lon,
+							pathN5.Lat, pathN5.Lon)
 
 						if b3 == 0 || b4 == 0 {
 							continue
@@ -109,21 +107,21 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 			currStDist = 0
 			currStETA = 0
 		} else {
-			stLoc := NewLocation(float64(startSTNodeBeforeTurn.Lat), float64(startSTNodeBeforeTurn.Lon))
-			pathN2Loc := NewLocation(float64(pathN2.Lat), float64(pathN2.Lon))
+			stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
+			pathN2Loc := NewLocation(pathN2.Lat, pathN2.Lon)
 			currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
-			maxSpeed := 30 * 1000 / 60
-			currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
+			maxSpeed := float64(30 * 1000 / 60)
+			currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / maxSpeed
 		}
 	}
 
 	beforeDestionationLat := p[len(p)-1].Lat
 	beforeDestionationLon := p[len(p)-1].Lon
-	stLoc := NewLocation(float64(startSTNodeBeforeTurn.Lat), float64(startSTNodeBeforeTurn.Lon))
-	pathN2Loc := NewLocation(float64(beforeDestionationLat), float64(beforeDestionationLon))
+	stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
+	pathN2Loc := NewLocation(beforeDestionationLat, beforeDestionationLon)
 	currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
-	maxSpeed := 30 * 1000 / 60
-	currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
+	maxSpeed := float64(30 * 1000 / 60)
+	currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / maxSpeed
 
 	if len(n) == 0 {
 		return []Navigation{{StreetName: "maaf graph nodes dari openstreetmap  diantara shortest path route tidak ada nama jalannya (kotanya primitif)"}},
@@ -196,11 +194,11 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 			pathN3 := MakeSixDigitsAfterComa(pathN3, 6)
 			pathN4 := MakeSixDigitsAfterComa(pathN4, 6)
 
-			b1 := Bearing(float64(stNode.Lat), float64(stNode.Lon), float64(pathN3.Lat),
-				float64(pathN3.Lon))
+			b1 := Bearing(stNode.Lat, stNode.Lon, pathN3.Lat,
+				pathN3.Lon)
 
-			b2 := Bearing(float64(pathN3.Lat), float64(pathN3.Lon),
-				float64(pathN4.Lat), float64(pathN4.Lon))
+			b2 := Bearing(pathN3.Lat, pathN3.Lon,
+				pathN4.Lat, pathN4.Lon)
 
 			if b1 == 0 || b2 == 0 {
 				continue
@@ -215,11 +213,11 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 					pathN5 := p[j]
 					pathN5 = MakeSixDigitsAfterComa(pathN5, 6)
 					if pathN5.StreetName == pathN3.StreetName {
-						b3 := Bearing(float64(stNode.Lat), float64(stNode.Lon), float64(pathN3.Lat),
-							float64(pathN3.Lon))
+						b3 := Bearing(stNode.Lat, stNode.Lon, pathN3.Lat,
+							pathN3.Lon)
 
-						b4 := Bearing(float64(pathN3.Lat), float64(pathN3.Lon),
-							float64(pathN5.Lat), float64(pathN5.Lon))
+						b4 := Bearing(pathN3.Lat, pathN3.Lon,
+							pathN5.Lat, pathN5.Lon)
 
 						if b3 == 0 || b4 == 0 {
 							continue
@@ -248,21 +246,21 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 			currStDist = 0
 			currStETA = 0
 		} else {
-			stLoc := NewLocation(float64(startSTNodeBeforeTurn.Lat), float64(startSTNodeBeforeTurn.Lon))
-			pathN2Loc := NewLocation(float64(pathN2.Lat), float64(pathN2.Lon))
+			stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
+			pathN2Loc := NewLocation(pathN2.Lat, pathN2.Lon)
 			currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
-			maxSpeed := 30 * 1000 / 60
-			currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
+			maxSpeed := float64(30 * 1000 / 60)
+			currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / maxSpeed
 		}
 	}
 
 	beforeDestionationLat := p[len(p)-1].Lat
 	beforeDestionationLon := p[len(p)-1].Lon
-	stLoc := NewLocation(float64(startSTNodeBeforeTurn.Lat), float64(startSTNodeBeforeTurn.Lon))
-	pathN2Loc := NewLocation(float64(beforeDestionationLat), float64(beforeDestionationLon))
+	stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
+	pathN2Loc := NewLocation(beforeDestionationLat, beforeDestionationLon)
 	currStDist = HaversineDistance(stLoc, pathN2Loc) * 1000
-	maxSpeed := 30 * 1000 / 60
-	currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / float64(maxSpeed)
+	maxSpeed := float64(30 * 1000 / 60)
+	currStETA = HaversineDistance(stLoc, pathN2Loc) * 1000 / maxSpeed
 
 	if len(n) == 0 {
 		return []Navigation{{StreetName: "maaf graph nodes dari openstreetmap  diantara shortest path route tidak ada nama jalannya (kotanya primitif)"}},
@@ -308,22 +306,32 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 // biar itungan bearingnya ga ngaco
 func MakeSixDigitsAfterComa(n CHNode, precision int) CHNode {
 
-	if util.CountDecimalPlacesF32(n.Lat) != precision {
-		n.Lat = util.TruncateFloat32(n.Lat+0.000001, precision)
+	if util.CountDecimalPlacesF64(n.Lat) != precision {
+		n.Lat = util.RoundFloat(n.Lat+0.000001, 6)
 	}
-	if util.CountDecimalPlacesF32(n.Lon) != precision {
-		n.Lon = util.TruncateFloat32(n.Lon+0.000001, precision)
+	if util.CountDecimalPlacesF64(n.Lon) != precision {
+		n.Lon = util.RoundFloat(n.Lon+0.000001, 6)
 	}
 	return n
 }
 
+func MakeSixDigitsAfterComaLatLon(lat, lon *float64, precision int) {
+
+	if util.CountDecimalPlacesF64(*lat) != precision {
+		*lat = util.RoundFloat(*lat+0.000001, 6)
+	}
+	if util.CountDecimalPlacesF64(*lon) != precision {
+		*lon = util.RoundFloat(*lon+0.000001, 6)
+	}
+}
+
 func MakeSixDigitsAfterComa2(n CHNode2, precision int) CHNode2 {
 
-	if util.CountDecimalPlacesF32(n.Lat) != precision {
-		n.Lat = util.TruncateFloat32(n.Lat+0.000001, precision)
+	if util.CountDecimalPlacesF64(n.Lat) != precision {
+		n.Lat = util.RoundFloat(n.Lat+0.000001, 6)
 	}
-	if util.CountDecimalPlacesF32(n.Lon) != precision {
-		n.Lon = util.TruncateFloat32(n.Lon+0.000001, precision)
+	if util.CountDecimalPlacesF64(n.Lon) != precision {
+		n.Lon = util.RoundFloat(n.Lon+0.000001, 6)
 	}
 	return n
 }

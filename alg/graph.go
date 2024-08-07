@@ -24,7 +24,7 @@ func RenderPath2(path []CHNode2) string {
 	coords := make([][]float64, 0)
 	for _, p := range path {
 		pT := p
-		coords = append(coords, []float64{float64(pT.Lat), float64(pT.Lon)})
+		coords = append(coords, []float64{pT.Lat, pT.Lon})
 	}
 	s = string(polyline.EncodeCoords(coords))
 	return s
@@ -35,7 +35,7 @@ func RenderPath(path []CHNode) string {
 	coords := make([][]float64, 0)
 	for _, p := range path {
 		pT := p
-		coords = append(coords, []float64{float64(pT.Lat), float64(pT.Lon)})
+		coords = append(coords, []float64{pT.Lat, pT.Lon})
 	}
 	s = string(polyline.EncodeCoords(coords))
 	return s
@@ -71,18 +71,6 @@ func RoadTypeMaxSpeed(roadType string) float64 {
 		return 50
 	case "living_street":
 		return 20
-	case "pedestrian":
-		return 20
-	case "track":
-		return 20
-	case "bus_guideway":
-		return 20
-	case "escape":
-		return 20
-	case "services":
-		return 20
-	case "raceway":
-		return 50
 	default:
 		return 40
 	}

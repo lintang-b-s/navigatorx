@@ -2,20 +2,6 @@ package alg
 
 import "math"
 
-// euclid distance
-func EuclideanDistance(from *Node, to *Node) float64 {
-	var total float64 = 0
-	latDif := math.Abs(from.Lat - to.Lat)
-	latDifSq := latDif * latDif
-
-	lonDif := math.Abs(from.Lon - to.Lon)
-	lonDifSq := lonDif * lonDif
-
-	total += latDifSq + lonDifSq
-
-	return math.Sqrt(total)
-}
-
 // haversine distance
 const earthRadiusKM = 6371.0
 

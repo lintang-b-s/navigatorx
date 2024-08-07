@@ -12,7 +12,7 @@ type cameFromPair struct {
 }
 
 type bidijkstraNode struct {
-	rank   float32
+	rank   float64
 	index  int
 	CHNode CHNode2
 }
@@ -40,8 +40,8 @@ referensi:
 func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, float64, float64) {
 	forwQ := &priorityQueueBiDijkstra{}
 	backQ := &priorityQueueBiDijkstra{}
-	df := make(map[int32]float32)
-	db := make(map[int32]float32)
+	df := make(map[int32]float64)
+	db := make(map[int32]float64)
 	df[from] = 0.0
 	db[to] = 0.0
 
@@ -55,10 +55,17 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 	fromNode.rank = 0
 	toNode := nmb.getCHDJ2(ch.ContractedNodes[to])
 	toNode.rank = 0
+
+	if fromNode == nil {
+		fmt.Println("fromNode is nil")
+	}
+	if toNode == nil {
+		fmt.Println("toNode is nil")
+	}
 	heap.Push(forwQ, fromNode)
 	heap.Push(backQ, toNode)
 
-	estimate := float32(math.MaxFloat32)
+	estimate := math.MaxFloat64
 
 	bestCommonVertex := int32(0)
 
@@ -87,6 +94,10 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 		}
 
 		ff := *frontier
+		if len(ff) == 0 {
+			fmt.Printf("~debug~ aneh ajg")
+			return []CHNode2{}, -1, -1
+		}
 		if ff[0].rank >= estimate {
 			if turnF {
 				frontFinished = true
@@ -186,7 +197,7 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 		}
 	}
 
-	if estimate == float32(math.MaxFloat32) {
+	if estimate == math.MaxFloat64 {
 		return []CHNode2{}, -1, -1
 	}
 	// estimate dari bidirectional dijkstra pake shortcut edge jadi lebih cepet eta nya & gak akurat
@@ -199,8 +210,8 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 
 	// edges := []EdgePair{}
 	fPath := []CHNode2{}
-	eta := float32(0.0)
-	dist := float32(0.0)
+	eta := 0.0
+	dist := 0.0
 	v := commonVertex
 	if ch.ContractedNodes[v].TrafficLight {
 		eta += 2.0
@@ -255,13 +266,13 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 		}
 
 	}
-	fmt.Println(tf)
-	return path, float64(eta), float64(dist / 1000)
+	// fmt.Println(tf)
+	return path, eta, dist / 1000
 }
 
 // buat forward dijkstra
 // dari common vertex ke source vertex
-func (ch *ContractedGraph) unpackBackward(edge EdgeCH, path *[]CHNode2, eta *float32, dist *float32) {
+func (ch *ContractedGraph) unpackBackward(edge EdgeCH, path *[]CHNode2, eta *float64, dist *float64) {
 	if !edge.IsShortcut {
 		if ch.ContractedNodes[edge.ToNodeIDX].TrafficLight {
 			*eta += 2.0
@@ -276,7 +287,7 @@ func (ch *ContractedGraph) unpackBackward(edge EdgeCH, path *[]CHNode2, eta *flo
 }
 
 // dari common vertex ke target vertex
-func (ch *ContractedGraph) unpackForward(edge EdgeCH, path *[]CHNode2, eta *float32, dist *float32) {
+func (ch *ContractedGraph) unpackForward(edge EdgeCH, path *[]CHNode2, eta *float64, dist *float64) {
 	if !edge.IsShortcut {
 		if ch.ContractedNodes[edge.ToNodeIDX].TrafficLight {
 			*eta += 2.0

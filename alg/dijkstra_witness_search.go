@@ -6,7 +6,7 @@ import (
 )
 
 type dijkstraNode struct {
-	rank   float32
+	rank   float64
 	index  int
 	CHNode CHNode2
 }
@@ -25,10 +25,10 @@ func (nm nodeMapCHDijkstra) getCHDJ(p CHNode2) *dijkstraNode {
 }
 
 func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32,
-	acceptedWeight float32, maxSettledNodes int, pMax float32, contracted []bool) float32 {
+	acceptedWeight float64, maxSettledNodes int, pMax float64, contracted []bool) float64 {
 
 	visited := make(map[int32]bool)
-	cost := make(map[int32]float32)
+	cost := make(map[int32]float64)
 
 	nm := nodeMapCHDijkstra{}
 	nq := &priorityQueueDijkstra{}
@@ -42,7 +42,7 @@ func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int3
 	for {
 		pq := *nq
 		if nq.Len() == 0 || pq[0].rank > acceptedWeight || settledNodes >= maxSettledNodes {
-			return math.MaxFloat32
+			return math.MaxFloat64
 		}
 
 		_, ok := cost[targetNodeIDx]
@@ -63,7 +63,7 @@ func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int3
 			if ok {
 				return out
 			}
-			return math.MaxFloat32
+			return math.MaxFloat64
 		}
 
 		visited[curr.CHNode.IDx] = true

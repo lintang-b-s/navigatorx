@@ -4,7 +4,6 @@ import (
 	"context"
 	"lintang/navigatorx/alg"
 	"lintang/navigatorx/domain"
-	"lintang/navigatorx/util"
 	"sync"
 )
 
@@ -12,13 +11,9 @@ type ContractedGraph interface {
 	SnapLocationToRoadNetworkNodeH3(ways []alg.SurakartaWay, wantToSnap []float64) int32
 	ShortestPathBiDijkstra(from, to int32) ([]alg.CHNode2, float64, float64)
 	AStarCH(from, to int32) (pathN []alg.CHNode, path string, eta float64, found bool, dist float64)
+	SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []alg.SurakartaWay, wantToSnap []float64) []alg.State
+	HiddenMarkovModelMapMatching(gps []alg.StateObservationPair) []alg.CHNode2
 	IsChReady() bool
-	IsCHLoaded() bool
-	LoadGraph() error
-	UnloadGraph() error
-	IsAstarLoaded() bool
-	LoadAstarGraph() error
-	UnloadAstarGraph() error
 }
 
 type KVDB interface {
@@ -38,12 +33,12 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, bool, error) {
 
 	from := &alg.Node{
-		Lat: util.TruncateFloat64(srcLat, 6),
-		Lon: util.TruncateFloat64(srcLon, 6),
+		Lat: srcLat,
+		Lon: srcLon,
 	}
 	to := &alg.Node{
-		Lat: util.TruncateFloat64(dstLat, 6),
-		Lon: util.TruncateFloat64(dstLon, 6),
+		Lat: dstLat,
+		Lon: dstLon,
 	}
 
 	var err error
@@ -116,18 +111,18 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, bool, error) {
 
 	from := &alg.Node{
-		Lat: util.TruncateFloat64(srcLat, 6),
-		Lon: util.TruncateFloat64(srcLon, 6),
+		Lat: srcLat,
+		Lon: srcLon,
 	}
 
 	alternativeStreet := &alg.Node{
-		Lat: util.TruncateFloat64(alternativeStreetLat, 6),
-		Lon: util.TruncateFloat64(alternativeStreetLon, 6),
+		Lat: alternativeStreetLat,
+		Lon: alternativeStreetLon,
 	}
 
 	to := &alg.Node{
-		Lat: util.TruncateFloat64(dstLat, 6),
-		Lon: util.TruncateFloat64(dstLon, 6),
+		Lat: dstLat,
+		Lon: dstLon,
 	}
 
 	var err error
@@ -273,12 +268,12 @@ func (uc *NavigationService) ShortestPathETACH(ctx context.Context, srcLat, srcL
 	dstLat float64, dstLon float64) (string, []alg.Navigation, []alg.Coordinate, float64, float64, error) {
 
 	from := &alg.Node{
-		Lat: util.TruncateFloat64(srcLat, 6),
-		Lon: util.TruncateFloat64(srcLon, 6),
+		Lat: srcLat,
+		Lon: srcLon,
 	}
 	to := &alg.Node{
-		Lat: util.TruncateFloat64(dstLat, 6),
-		Lon: util.TruncateFloat64(dstLon, 6),
+		Lat: dstLat,
+		Lon: dstLon,
 	}
 
 	var err error
@@ -298,12 +293,67 @@ func (uc *NavigationService) ShortestPathETACH(ctx context.Context, srcLat, srcL
 	for n := range p {
 		pathN := p[n]
 		route = append(route, alg.Coordinate{
-			Lat: float64(pathN.Lat),
-			Lon: float64(pathN.Lon),
+			Lat: pathN.Lat,
+			Lon: pathN.Lon,
 		})
 	}
 
 	n, _ := alg.CreateTurnByTurnNavigationCH(p)
 
 	return alg.RenderPath2(p), n, route, eta, dist, nil
+}
+
+func (uc *NavigationService) HiddenMarkovModelMapMatching(ctx context.Context, gps []alg.Coordinate) (string, []alg.CHNode2, error) {
+	hmmPair := []alg.StateObservationPair{}
+
+	stateID := 0
+	for _, gpsPoint := range gps {
+		// if i < len(gps)-1 && len(gps) > 150 {
+		// 	// preprocessing , buang gps points yang jaraknya lebih dari 2*4.07 meter dari previous gps point
+		// 	// (Hidden Markov Map Matching Through Noise and Sparseness 4.1) , biar gak terlalu lama viterbinya O(T*|S|^2)
+		// 	currGpsLoc := alg.NewLocation(gpsPoint.Lat), gpsPoint.Lon))
+		// 	nextGpsLoc := alg.NewLocation(gps[i+1].Lat), gps[i+1].Lon))
+		// 	if alg.HaversineDistance(currGpsLoc, nextGpsLoc)*1000 >= 2*4.07 {
+		// 		continue
+		// 	}
+		// }
+		nearestRoadNodes, err := uc.NearestStreetNodesForMapMatching(gpsPoint.Lat, gpsPoint.Lon)
+		if len(nearestRoadNodes) == 0 {
+			continue
+		}
+		if err != nil {
+			return "", []alg.CHNode2{}, err
+		}
+		for i := range nearestRoadNodes {
+			nearestRoadNodes[i].ID = stateID
+
+			stateID++
+		}
+
+		chNodeGPS := alg.CHNode2{
+			Lat: gpsPoint.Lat,
+			Lon: gpsPoint.Lon,
+		}
+
+		hmmPair = append(hmmPair, alg.StateObservationPair{
+			Observation: chNodeGPS,
+			State:       nearestRoadNodes,
+		})
+	}
+
+	path := uc.CH.HiddenMarkovModelMapMatching(hmmPair)
+	return alg.RenderPath2(path), path, nil
+}
+
+func (uc *NavigationService) NearestStreetNodesForMapMatching(lat, lon float64) ([]alg.State, error) {
+	ways, err := uc.KV.GetNearestStreetsFromPointCoord(lat, lon)
+	if err != nil {
+		return []alg.State{}, err
+	}
+	streetNodes := uc.CH.SnapLocationToRoadNetworkNodeH3ForMapMatching(ways, []float64{lat, lon})
+	// streetNodes, err := uc.CH.SnapLocationToRoadNetworkNodeRtree(lat, lon) // gakjadi pake rtree
+	if err != nil {
+		return []alg.State{}, err
+	}
+	return streetNodes, nil
 }

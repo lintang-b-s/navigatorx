@@ -38,10 +38,15 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 		centerWayLat := w.CenterLoc[0]
 		centerWayLon := w.CenterLoc[1]
 		for j, node := range street.NodesID {
+			_, ok := nodeIDxMap[node]
+			if !ok {
+				continue
+			}
 			street.NodesID[j] = int64(nodeIDxMap[node])
+
 		}
 
-		h3LatLon := h3.NewLatLng(float64(centerWayLat), float64(centerWayLon))
+		h3LatLon := h3.NewLatLng(centerWayLat, centerWayLon)
 		cell := h3.LatLngToCell(h3LatLon, 9)
 
 		kv[cell.String()] = append(kv[cell.String()], street)
@@ -49,22 +54,24 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 		bar.Add(1)
 	}
 
+	
+
 	fmt.Println("")
 	fmt.Printf("total kv: %d", len(kv))
 	fmt.Println("")
-	bar = progressbar.NewOptions(len(kv),
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowBytes(true),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][5/7][reset] Menyimpan h3 indexed street ke pebble db..."),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	// bar = progressbar.NewOptions(len(kv),
+	// 	progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+	// 	progressbar.OptionEnableColorCodes(true),
+	// 	progressbar.OptionShowBytes(true),
+	// 	progressbar.OptionSetWidth(15),
+	// 	progressbar.OptionSetDescription("[cyan][5/7][reset] Menyimpan h3 indexed street ke pebble db..."),
+	// 	progressbar.OptionSetTheme(progressbar.Theme{
+	// 		Saucer:        "[green]=[reset]",
+	// 		SaucerHead:    "[green]>[reset]",
+	// 		SaucerPadding: " ",
+	// 		BarStart:      "[",
+	// 		BarEnd:        "]",
+	// 	}))
 
 	for keyStr, valArr := range kv {
 		key := []byte(keyStr)
@@ -75,11 +82,13 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 		if err := k.db.Set(key, val, pebble.Sync); err != nil {
 			log.Fatal(err)
 		}
-		bar.Add(1)
+		// bar.Add(1)
 	}
 }
 
 func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay, error) {
+	ways := []SurakartaWay{}
+
 	home := h3.NewLatLng(lat, lon)
 	cell := h3.LatLngToCell(home, 9)
 	val, closer, err := k.db.Get([]byte(cell.String()))
@@ -87,9 +96,32 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 	if err != nil {
 		return []SurakartaWay{}, err
 	}
-
 	streets, err := LoadWay(val)
-	return streets, err
+	ways = append(ways, streets...)
+
+	cells := h3.GridDisk(cell, 1)
+	for _, currCell := range cells {
+		if currCell == cell {
+			continue
+		}
+		val, closer, err := k.db.Get([]byte(currCell.String()))
+		if closer == nil {
+			continue
+			fmt.Printf("%v, %v \n", lat, lon)
+		}
+		defer closer.Close()
+		if err != nil {
+			return []SurakartaWay{}, err
+		}
+
+		streets, err := LoadWay(val)
+		if err != nil {
+			return []SurakartaWay{}, err
+		}
+		ways = append(ways, streets...)
+	}
+
+	return ways, err
 }
 
 func (k *KVDB) Close() {

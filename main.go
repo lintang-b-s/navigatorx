@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"lintang/navigatorx/alg"
 	"lintang/navigatorx/router"
 	"lintang/navigatorx/service"
@@ -41,10 +42,12 @@ func main() {
 	kvDB := alg.NewKVDB(db)
 	defer kvDB.Close()
 
-	kvDB.CreateStreetKV(surakartaWays, nodeIdxMap)
-
+	go func() {
+		kvDB.CreateStreetKV(surakartaWays, nodeIdxMap)
+		runtime.GC()
+		runtime.GC()
+	}()
 	// bikinRtreeStreetNetwork(surakartaWays, ch, nodeIdxMap)
-	surakartaWays = nil
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -83,17 +86,17 @@ func bikinRtreeStreetNetwork(ways []alg.SurakartaWay, ch *alg.ContractedGraph, n
 			BarStart:      "[",
 			BarEnd:        "]",
 		}))
-	for i := range len(ways) {
-		way := ways[i]
-		for j := range len(way.NodesID) {
-			way.NodesID[j] = int64(nodeIdxMap[way.NodesID[j]]) // harus int64 (osm.NodeId)
-		}
-	}
+	// for i := range len(ways) {
+	// 	way := ways[i]
+	// 	// for j := range len(way.NodesID) {
+	// 	// 	// way.NodesID[j] = int64(nodeIdxMap[way.NodesID[j]]) // harus int64 (osm.NodeId)
+	// 	// }
+	// }
 
 	rtg := rtreego.NewTree(2, 25, 50) // 2 dimension, 25 min entries dan 50 max entries
 	rt := alg.NewRtree(rtg)
 	for _, way := range ways {
-		rt.StRtree.Insert(&alg.StreetRect{Location: rtreego.Point{float64(way.CenterLoc[0]), float64(way.CenterLoc[1])},
+		rt.StRtree.Insert(&alg.StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
 			Wormhole: nil,
 			Street:   &way})
 		bar.Add(1)
@@ -136,6 +139,8 @@ func bikinGraphFromOpenstreetmap() ([]alg.SurakartaWay, *alg.ContractedGraph, ma
 			BarStart:      "[",
 			BarEnd:        "]",
 		}))
+	nodeCount := 0
+	wayNodesMap := make(map[osm.NodeID]bool)
 	for scanner.Scan() {
 		o := scanner.Object()
 		// do something
@@ -144,28 +149,58 @@ func bikinGraphFromOpenstreetmap() ([]alg.SurakartaWay, *alg.ContractedGraph, ma
 		if count%50000 == 0 {
 			bar.Add(50000)
 		}
-		if tipe == osm.TypeNode {
-			ctr.nodeMap[o.(*osm.Node).ID] = o.(*osm.Node)
+
+		if tipe != "way" {
+			continue
+		}
+		tag, ok := o.(*osm.Way).TagMap()["highway"]
+		if !ok {
+			continue
+		}
+		if !alg.ValidRoadType[tag] {
+			continue
 		}
 
 		if tipe == osm.TypeWay {
 			ways = append(ways, o.(*osm.Way))
 			someWayCount++
+			for _, node := range o.(*osm.Way).Nodes {
+				wayNodesMap[node.ID] = true
+			}
 		}
 		count++
 	}
+
+	f.Seek(0, io.SeekStart)
+	if err != nil {
+		panic(err)
+	}
+	scanner = osmpbf.New(context.Background(), f, 3)
+	defer scanner.Close()
+
+	for scanner.Scan() {
+		o := scanner.Object()
+		if o.ObjectID().Type() == osm.TypeNode {
+			node := o.(*osm.Node)
+			if _, ok := wayNodesMap[node.ID]; ok {
+				ctr.nodeMap[o.(*osm.Node).ID] = o.(*osm.Node)
+				nodeCount++
+			}
+		}
+	}
+
 	fmt.Println("")
 
 	scanErr := scanner.Err()
 	if scanErr != nil {
 		panic(scanErr)
 	}
-	fmt.Println("jumlah osm object di area sekitar solo,semarang,jogja: " + fmt.Sprint(count))
+	fmt.Println("jumlah osm nodes: " + fmt.Sprint(nodeCount))
 
 	trafficLightNodeMap := make(map[string]int64)
 	var trafficLightNodeIDMap = make(map[osm.NodeID]bool)
 
-	fmt.Println("jumlah edges/way di area sekitar solo,semarang,jogja: " + fmt.Sprint(someWayCount))
+	fmt.Println("jumlah osm way: " + fmt.Sprint(someWayCount))
 	for idx, way := range ways {
 		for i := 0; i < len(way.Nodes); i++ {
 			fromNodeID := way.Nodes[i].ID
@@ -180,6 +215,9 @@ func bikinGraphFromOpenstreetmap() ([]alg.SurakartaWay, *alg.ContractedGraph, ma
 		}
 	}
 
+	ctr.nodeMap = nil
+	runtime.GC()
+	runtime.GC()
 	surakartaWays, surakartaNodes := alg.InitGraph(ways, trafficLightNodeIDMap)
 	ch := alg.NewContractedGraph()
 	nodeIdxMap := ch.InitCHGraph(surakartaNodes, len(ways))

@@ -30,6 +30,8 @@ type NavigationService interface {
 	// 	dstLat float64, dstLon float64) (string, float64, []alg.Navigation, bool, []alg.Coordinate, float64, error)
 	ShortestPathETACH(ctx context.Context, srcLat, srcLon float64,
 		dstLat float64, dstLon float64) (string, []alg.Navigation, []alg.Coordinate, float64, float64, error)
+
+	HiddenMarkovModelMapMatching(ctx context.Context, gps []alg.Coordinate) (string, []alg.CHNode2, error)
 }
 
 type NavigationHandler struct {
@@ -44,6 +46,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 			r.Post("/shortestPath", handler.shortestPathETA)
 			r.Post("/shortestPathAlternativeStreet", handler.shortestPathAlternativeStreetETA)
 			r.Post("/shortestPathCH", handler.shortestPathETACH)
+			r.Post("/mapMatching", handler.HiddenMarkovModelMapMatching) 
 		})
 	})
 }
@@ -205,6 +208,77 @@ func (h *NavigationHandler) shortestPathETACH(w http.ResponseWriter, r *http.Req
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, NewShortestPathResponse(p, dist, n, eta, route, found, true))
+}
+
+type MapMatchingRequest struct {
+	Coordinates []Coord `json:"coordinates" validate:"required,dive"`
+}
+
+type Coord struct {
+	Lat float64 `json:"lat" validate:"required,lt=90,gt=-90"`
+	Lon float64 `json:"lon" validate:"required,lt=180,gt=-180"`
+}
+
+func (s *MapMatchingRequest) Bind(r *http.Request) error {
+	if len(s.Coordinates) == 0 {
+		return errors.New("invalid request")
+	}
+	return nil
+}
+
+type MapMatchingResponse struct {
+	Path        string  `json:"path"`
+	Coordinates []Coord `json:"coordinates"`
+}
+
+func RenderMapMatchingResponse(path string, coords []alg.CHNode2) *MapMatchingResponse {
+	coordsResp := []Coord{}
+	for _, c := range coords {
+		coordsResp = append(coordsResp, Coord{
+			Lat: c.Lat,
+			Lon: c.Lon,
+		})
+	}
+
+	return &MapMatchingResponse{
+		Path:        path,
+		Coordinates: coordsResp,
+	}
+}
+
+func (h *NavigationHandler) HiddenMarkovModelMapMatching(w http.ResponseWriter, r *http.Request) {
+	data := &MapMatchingRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	coords := []alg.Coordinate{}
+	for _, c := range data.Coordinates {
+		coords = append(coords, alg.Coordinate{
+			Lat: c.Lat,
+			Lon: c.Lon,
+		})
+	}
+	p, pNode, err := h.svc.HiddenMarkovModelMapMatching(r.Context(), coords)
+	if err != nil {
+		render.Render(w, r, ErrInternalServerErrorRend(errors.New("internal server error")))
+
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, RenderMapMatchingResponse(p, pNode))
 }
 
 type ErrResponse struct {

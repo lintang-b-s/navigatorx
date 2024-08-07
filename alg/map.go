@@ -3,7 +3,6 @@ package alg
 import (
 	"encoding/csv"
 	"fmt"
-	"lintang/navigatorx/util"
 	"log"
 	"os"
 	"sort"
@@ -20,9 +19,33 @@ type Coordinate struct {
 	Lon float64 `json:"lon"`
 }
 
+type Bound struct {
+	MinLat float64
+	MaxLat float64
+	MinLon float64
+	MaxLon float64
+}
+
 type SurakartaWay struct {
-	CenterLoc []float32 // [lat, lon]
+	CenterLoc []float64 // [lat, lon]
 	NodesID   []int64   // ini harus int64 karena id dari osm int64  (osm.NodeId)
+	Bound     Bound
+}
+
+var ValidRoadType = map[string]bool{
+	"motorway":       true,
+	"trunk":          true,
+	"primary":        true,
+	"secondary":      true,
+	"tertiary":       true,
+	"unclassified":   true,
+	"residential":    true,
+	"motorway_link":  true,
+	"trunk_link":     true,
+	"primary_link":   true,
+	"secondary_link": true,
+	"tertiary_link":  true,
+	"living_street":  true,
 }
 
 // gak ada 1 way dengan multiple road type
@@ -94,9 +117,10 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 			continue
 		}
 
-		// if idx%50000 == 0 {
-		// 	fmt.Println("membuat graph dari openstreetmap way ke: " + fmt.Sprint(idx))
-		// }
+		if !ValidRoadType[roadType] {
+			continue
+		}
+
 		sWay := SurakartaWay{
 			NodesID: make([]int64, 0),
 		}
@@ -109,8 +133,8 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 			fromN := way.Nodes[i]
 
 			from := &Node{
-				Lat:          util.TruncateFloat64(fromN.Lat, 6),
-				Lon:          util.TruncateFloat64(fromN.Lon, 6),
+				Lat:          fromN.Lat,
+				Lon:          fromN.Lon,
 				ID:           int64(fromN.ID),
 				StreetName:   namaJalan,
 				TrafficLight: trafficLightNodeIdMap[fromN.ID],
@@ -118,8 +142,8 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 
 			toN := way.Nodes[i+1]
 			to := &Node{
-				Lat:          util.TruncateFloat64(toN.Lat, 6),
-				Lon:          util.TruncateFloat64(toN.Lon, 6),
+				Lat:          toN.Lat,
+				Lon:          toN.Lon,
 				ID:           int64(toN.ID),
 				StreetName:   namaJalan,
 				TrafficLight: trafficLightNodeIdMap[toN.ID],
@@ -185,12 +209,18 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 			}
 
 		}
-		sort.Sort(sort.Float64Slice(streetNodeLats))
-		sort.Sort(sort.Float64Slice(streetNodeLon))
+		sort.Float64s(streetNodeLats)
+		sort.Float64s(streetNodeLon)
 
 		// https://www.movable-type.co.uk/scripts/latlong.html
 		centerLat, centerLon := MidPoint(streetNodeLats[0], streetNodeLon[0], streetNodeLats[len(streetNodeLats)-1], streetNodeLon[len(streetNodeLon)-1])
-		sWay.CenterLoc = []float32{float32(centerLat), float32(centerLon)}
+		sWay.CenterLoc = []float64{centerLat, centerLon}
+		sWay.Bound = Bound{
+			MinLat: streetNodeLats[0],
+			MaxLat: streetNodeLats[len(streetNodeLats)-1],
+			MinLon: streetNodeLon[0],
+			MaxLon: streetNodeLon[len(streetNodeLon)-1],
+		}
 
 		surakartaWays = append(surakartaWays, sWay)
 		bar.Add(1)
