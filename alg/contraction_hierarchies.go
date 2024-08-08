@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"errors"
 	"fmt"
-	"math"
 	"runtime"
 	"time"
 
@@ -203,7 +202,7 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 	// ch.ContractedGraph = ch.OrigGraph
 	ch.Metadata.EdgeCount = edgeCount
 	ch.Metadata.NodeCount = gLen
- 	ch.Metadata.MeanDegree = float64(edgeCount * 1.0 / gLen)
+	ch.Metadata.MeanDegree = float64(edgeCount * 1.0 / gLen)
 
 	return nodeIdxMap
 }
@@ -577,10 +576,13 @@ func (n *CHNode) PathEstimatedCostETA(to CHNode) float64 {
 
 	currLoc := NewLocation(n.Lat, n.Lon)
 	toLoc := NewLocation(to.Lat, to.Lon)
-	dist := HaversineDistance(currLoc, toLoc)
+	dist := HaversineDistance(currLoc, toLoc) // km
 
-	maxSpeed := 90.0 * 1000.0 / 60.0         // m/min
-	r := math.Sqrt(dist) * 100000 / maxSpeed // * 100000 -> meter
+	time := to.OutEdges[0].Weight
+	distEdge := to.OutEdges[0].Dist
+	speed := (distEdge / time) * 60 / 1000 // km/h
+
+	r := dist  / speed // dist = km, speed = km/h
 	return r
 }
 
