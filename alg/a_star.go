@@ -24,7 +24,7 @@ func (nm nodeMapCH) getCH(p CHNode) *priorityQueueNode[CHNode] {
 // https://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string, eta float64, found bool, dist float64) {
 	nm := nodeMapCH{}
-	nq := &priorityQueue[CHNode2]{}
+	nq := &priorityQueue[CHNode]{}
 	heap.Init(nq)
 	fromNode := nm.getCH(ch.AStarGraph[from])
 	fromNode.rank = 0
