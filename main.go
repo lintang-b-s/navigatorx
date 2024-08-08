@@ -49,8 +49,7 @@ func main() {
 		fmt.Println("Contraction Hieararchies + Bidirectional Dijkstra Ready!!")
 	}()
 
-	fmt.Println("A* Ready!!")
-	fmt.Println("server started at :5000")
+
 	err = http.ListenAndServe(":5000", r)
 	fmt.Println(err)
 }

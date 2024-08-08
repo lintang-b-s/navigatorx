@@ -37,7 +37,6 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 		street := way[i]
 		centerWayLat := w.CenterLoc[0]
 		centerWayLon := w.CenterLoc[1]
-		
 
 		h3LatLon := h3.NewLatLng(centerWayLat, centerWayLon)
 		cell := h3.LatLngToCell(h3LatLon, 9)
@@ -50,31 +49,35 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 	fmt.Println("")
 	fmt.Printf("total kv: %d", len(kv))
 	fmt.Println("")
-	// bar = progressbar.NewOptions(len(kv),
-	// 	progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
-	// 	progressbar.OptionEnableColorCodes(true),
-	// 	progressbar.OptionShowBytes(true),
-	// 	progressbar.OptionSetWidth(15),
-	// 	progressbar.OptionSetDescription("[cyan][5/7][reset] Menyimpan h3 indexed street ke pebble db..."),
-	// 	progressbar.OptionSetTheme(progressbar.Theme{
-	// 		Saucer:        "[green]=[reset]",
-	// 		SaucerHead:    "[green]>[reset]",
-	// 		SaucerPadding: " ",
-	// 		BarStart:      "[",
-	// 		BarEnd:        "]",
-	// 	}))
+	bar = progressbar.NewOptions(len(kv),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("[cyan][5/7][reset] Menyimpan h3 indexed street ke pebble db..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
 
 	for keyStr, valArr := range kv {
 		key := []byte(keyStr)
 		val, err := CompressWay(valArr)
+
 		if err != nil {
 			log.Fatal(err)
 		}
 		if err := k.db.Set(key, val, pebble.Sync); err != nil {
 			log.Fatal(err)
 		}
-		// bar.Add(1)
+		bar.Add(1)
 	}
+	fmt.Println("")
+	fmt.Println("A* Ready!!")
+	fmt.Println("server started at :5000")
 }
 
 func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay, error) {
