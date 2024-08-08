@@ -36,7 +36,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Mount("/debug", middleware.Profiler())
-
+	ch.KVdb = kvDB
 	navigatorSvc := service.NewNavigationService(ch, kvDB)
 	router.NavigatorRouter(r, navigatorSvc)
 

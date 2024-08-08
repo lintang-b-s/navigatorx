@@ -8,7 +8,7 @@
 2. taruh hasil download ke root project ini
 3. go run main.go
 (Minimal free ram 1 GB buat data diatas)
-4. request ke shortest path
+4. request ke shortest path (source=surakarta/rumahku , destination=pantai parangtritis)
 curl --location 'http://localhost:5000/api/navigations/shortestPath' \
 --header 'Content-Type: application/json' \
 --data '{

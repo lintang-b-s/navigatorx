@@ -1,6 +1,7 @@
 package alg
 
 import (
+	"fmt"
 	"sort"
 )
 
@@ -32,12 +33,14 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3(ways []SurakartaWay, 
 		return nearestStreets[i].Dist < nearestStreets[j].Dist
 	})
 
-	if len(nearestStreets) >= 5 {
-		nearestStreets = nearestStreets[:5]
+	if len(nearestStreets) >= 15 {
+		nearestStreets = nearestStreets[:15]
 	}
 	wantToSnapLoc := NewLocation(wantToSnap[0], wantToSnap[1])
 	best := 100000000.0
 	snappedStNode := int32(0)
+	snappedNotIntersectionNodes := int32(0)
+	bestNotIntersection := 100000000.0
 
 	for _, street := range nearestStreets {
 
@@ -51,28 +54,49 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3(ways []SurakartaWay, 
 			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), int32(nodeIdx)})
 		}
 
+		notIntersectionNodes := []NodePoint{}
+		for _, node := range street.Street.Nodes {
+			nodeLoc := NewLocation(node.Lat, node.Lon)
+			notIntersectionNodes = append(notIntersectionNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), -1})
+		}
+
+		if len(streetNodes) < 2 || len(notIntersectionNodes) < 2 {
+			continue
+		}
 		sort.Slice(streetNodes, func(i, j int) bool {
 			return streetNodes[i].Dist < streetNodes[j].Dist
 		})
 
-		if len(streetNodes) < 2 {
-			continue
-		}
+		sort.Slice(notIntersectionNodes, func(i, j int) bool {
+			return notIntersectionNodes[i].Dist < notIntersectionNodes[j].Dist
+		})
+
 		nearestStPoint := streetNodes[0].Node
 		nearestStNodeIdx := streetNodes[0].Idx
 		secondNearestStPoint := streetNodes[1].Node
+		nearestNotIntersectionNode := notIntersectionNodes[0].Node
+		secondNearestNotIntersectionNode := notIntersectionNodes[1].Node
 
 		// project point ke line segment jalan antara 2 point tadi
 		projection := ProjectPointToLineCoord(nearestStPoint, secondNearestStPoint, wantToSnap)
 
-		projectionLoc := NewLocation(projection.Lat, projection.Lon)
+		projectionNotIntersection := ProjectPointToLineCoord(nearestNotIntersectionNode, secondNearestNotIntersectionNode, wantToSnap)
 
+		projectionLoc := NewLocation(projection.Lat, projection.Lon)
+		projectionNotIntersectionLoc := NewLocation(projectionNotIntersection.Lat, projectionNotIntersection.Lon)
 		// ambil streetNode yang jarak antara hasil projection dg lokasi gps  paling kecil
 		if HaversineDistance(wantToSnapLoc, projectionLoc) < best {
 			best = HaversineDistance(wantToSnapLoc, projectionLoc)
 			snappedStNode = nearestStNodeIdx
 		}
+		if HaversineDistance(wantToSnapLoc, projectionNotIntersectionLoc) < bestNotIntersection {
+
+			bestNotIntersection = HaversineDistance(wantToSnapLoc, projectionNotIntersectionLoc)
+			snappedNotIntersectionNodes = notIntersectionNodes[0].Idx
+		}
 	}
+
+	fmt.Println("best: ", snappedNotIntersectionNodes)
 
 	return snappedStNode
 }
@@ -96,8 +120,8 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 		return nearestStreets[i].Dist < nearestStreets[j].Dist
 	})
 
-	if len(nearestStreets) >= 4 {
-		nearestStreets = nearestStreets[:4]
+	if len(nearestStreets) >= 10 {
+		nearestStreets = nearestStreets[:10]
 	}
 
 	wantToSnapLoc := NewLocation(wantToSnap[0], wantToSnap[1])
@@ -108,11 +132,18 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 
 		// mencari 2 point dijalan yg paling dekat dg gps
 		streetNodes := []NodePoint{}
-		for _, nodeID := range street.NodesID {
-			nodeIdx := nodeID
-			node := ch.ContractedNodes[nodeIdx]
+		for _, node := range street.Nodes {
+			nodeIDx := int32(-1)
+			val, ok := ch.NodeMapIdx[int64(node.IDx)]
+			if ok {
+				nodeIDx = val
+			}
 			nodeLoc := NewLocation(node.Lat, node.Lon)
-			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), int32(nodeIdx)})
+			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), nodeIDx})
+		}
+
+		if len(streetNodes) < 2 {
+			continue
 		}
 
 		sort.Slice(streetNodes, func(i, j int) bool {

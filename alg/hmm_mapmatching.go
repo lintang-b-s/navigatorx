@@ -12,11 +12,11 @@ type StateObservationPair struct {
 }
 
 type State struct {
-	ID        int
-	NodeID    int32
-	Lat       float64
-	Lon       float64
-	Dist      float64
+	ID     int
+	NodeID int32
+	Lat    float64
+	Lon    float64
+	Dist   float64
 	EdgeID int32
 }
 
@@ -46,7 +46,29 @@ func (ch ContractedGraph) HiddenMarkovModelMapMatching(gps []StateObservationPai
 				if currState.EdgeID == nextState.EdgeID {
 					stateRouteLength = HaversineDistance(NewLocation(currState.Lat, currState.Lon), NewLocation(nextState.Lat, nextState.Lon))
 				} else {
-					_, _, dijkstraSp := ch.ShortestPathBiDijkstra(currState.NodeID, nextState.NodeID)
+					var err error
+					if nextState.NodeID == -1 {
+						nextState.NodeID, err = ch.snapLocToStreetNode(nextState.Lat, nextState.Lon)
+						if err != nil {
+							continue
+						}
+
+					}
+
+					if currState.NodeID == -1 {
+						currState.NodeID, err = ch.snapLocToStreetNode(currState.Lat, currState.Lon)
+						if err != nil {
+							continue
+						}
+
+					}
+					var dijkstraSp float64
+					if ch.IsChReady() {
+						_, _, dijkstraSp = ch.ShortestPathBiDijkstra(currState.NodeID, nextState.NodeID)
+					} else {
+						_, _, _, _, dijkstraSp = ch.AStarCH(currState.NodeID, nextState.NodeID)
+					}
+
 					if dijkstraSp == -1 || dijkstraSp*1000 > 1000 {
 						// beda jalan & shortest path antara hidden state & next hidden state nya lebih dari 1 km
 						currTransitionProb = -999999999
@@ -137,4 +159,14 @@ func computeEmissionProb(obsStateDist float64) float64 {
 
 func computelogNormalEmissionProb(obsStateDist float64) float64 {
 	return math.Log(1.0/(math.Sqrt(2*math.Pi)*sigmaZ)) + (-0.5 * math.Pow(obsStateDist/sigmaZ, 2))
+}
+
+func (ch *ContractedGraph) snapLocToStreetNode(lat, lon float64) (int32, error) {
+	ways, err := ch.KVdb.GetNearestStreetsFromPointCoord(lat, lon)
+	if err != nil {
+		return 0, err
+	}
+	streetNodeIDx := ch.SnapLocationToRoadNetworkNodeH3(ways, []float64{lat, lon})
+
+	return streetNodeIDx, nil
 }

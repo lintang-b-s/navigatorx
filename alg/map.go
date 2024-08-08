@@ -22,7 +22,7 @@ type Coordinate struct {
 type SurakartaWay struct {
 	ID                  int32
 	CenterLoc           []float64 // [lat, lon]
-	NodesID             []int64   // ini harus int64 karena id dari osm int64  (osm.NodeId)
+	Nodes               []CHNode2  // yang bukan intersectionNodes
 	IntersectionNodesID []int64
 }
 
@@ -88,7 +88,7 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 		}
 
 		sWay := SurakartaWay{
-			NodesID: make([]int64, 0),
+			Nodes: make([]CHNode2, 0),
 		}
 
 		streetNodeLats := []float64{}
@@ -114,7 +114,10 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 			node.UsedInRoad += 1
 
 			// add node ke surakartaway
-			sWay.NodesID = append(sWay.NodesID, node.ID)
+			sWay.Nodes = append(sWay.Nodes, CHNode2{
+				Lat: node.Lat,
+				Lon: node.Lon,
+			})
 			// append node lat & node lon
 			streetNodeLats = append(streetNodeLats, node.Lat)
 			streetNodeLon = append(streetNodeLon, node.Lon)

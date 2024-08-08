@@ -142,6 +142,7 @@ func BikinGraphFromOpenstreetmap() ([]SurakartaWay, *ContractedGraph, map[int64]
 	NoteWayTypes(ways)
 
 	WriteWayTypeToCsv(trafficLightNodeMap, "traffic_light_node.csv")
+	ch.NodeMapIdx = nodeIdxMap
 
 	return surakartaWays, ch, nodeIdxMap, graphEdges
 }

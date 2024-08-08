@@ -37,14 +37,7 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 		street := way[i]
 		centerWayLat := w.CenterLoc[0]
 		centerWayLon := w.CenterLoc[1]
-		for j, node := range street.NodesID {
-			_, ok := nodeIDxMap[node]
-			if !ok {
-				continue
-			}
-			street.NodesID[j] = int64(nodeIDxMap[node])
-
-		}
+		
 
 		h3LatLon := h3.NewLatLng(centerWayLat, centerWayLon)
 		cell := h3.LatLngToCell(h3LatLon, 9)
@@ -53,8 +46,6 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 
 		bar.Add(1)
 	}
-
-	
 
 	fmt.Println("")
 	fmt.Printf("total kv: %d", len(kv))
@@ -107,9 +98,8 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 		val, closer, err := k.db.Get([]byte(currCell.String()))
 		if closer == nil {
 			continue
-			fmt.Printf("%v, %v \n", lat, lon)
 		}
-		defer closer.Close()
+
 		if err != nil {
 			return []SurakartaWay{}, err
 		}
@@ -119,6 +109,7 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 			return []SurakartaWay{}, err
 		}
 		ways = append(ways, streets...)
+		closer.Close()
 	}
 
 	return ways, err

@@ -75,6 +75,9 @@ type ContractedGraph struct {
 	ContractedInEdges      []EdgeCH
 	ContractedNodes        []CHNode2
 
+	NodeMapIdx map[int64]int32
+	KVdb 	 *KVDB
+
 	CompressedCHGraph    []byte
 	CompressedAstarGraph []byte
 	IsLoaded             bool
@@ -539,7 +542,6 @@ func (ch *ContractedGraph) calculatePriority(nodeIDx int32, contracted []bool) f
 	return float64(10*edgeDifference + 1*originalEdgesCount)
 }
 
-
 func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 	heap.Init(ch.PQNodeOrdering)
 	bar := progressbar.NewOptions(len(ch.ContractedNodes),
@@ -577,7 +579,7 @@ func (n *CHNode) PathEstimatedCostETA(to CHNode) float64 {
 	distEdge := to.OutEdges[0].Dist
 	speed := (distEdge / time) * 60 / 1000 // km/h
 
-	r := dist  / speed // dist = km, speed = km/h
+	r := dist / speed // dist = km, speed = km/h
 	return r
 }
 
