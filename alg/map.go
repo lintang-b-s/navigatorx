@@ -43,7 +43,7 @@ var ValidRoadType = map[string]bool{
 }
 
 // gak ada 1 way dengan multiple road type
-func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]SurakartaWay, []Node) {
+func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]SurakartaWay, []Node, []SurakartaWay) {
 	var SurakartaNodeMap = make(map[int64]*Node)
 
 	oneWayTypesMap := make(map[string]int64)
@@ -135,13 +135,13 @@ func InitGraph(ways []*osm.Way, trafficLightNodeIdMap map[osm.NodeID]bool) ([]Su
 	WriteWayTypeToCsv(oneWayTypesMap, "onewayTypes.csv")
 	WriteWayTypeToCsv(twoWayTypesMap, "twoWayTypes.csv")
 
-	surakartaNodes, surakartaWays := processOnlyIntersectionRoadNodes(SurakartaNodeMap, ways, surakartaWays)
+	surakartaNodes, surakartaWays, graphEdges := processOnlyIntersectionRoadNodes(SurakartaNodeMap, ways, surakartaWays)
 
 	fmt.Println("")
-	return surakartaWays, surakartaNodes
+	return surakartaWays, surakartaNodes, graphEdges
 }
 
-func processOnlyIntersectionRoadNodes(nodeMap map[int64]*Node, ways []*osm.Way, surakartaWays []SurakartaWay) ([]Node, []SurakartaWay) {
+func processOnlyIntersectionRoadNodes(nodeMap map[int64]*Node, ways []*osm.Way, surakartaWays []SurakartaWay) ([]Node, []SurakartaWay, []SurakartaWay) {
 	surakartaNodes := []Node{}
 	alreadyAdded := make(map[int64]struct{})
 	intersectionNodes := []int64{}
@@ -218,16 +218,22 @@ func processOnlyIntersectionRoadNodes(nodeMap map[int64]*Node, ways []*osm.Way, 
 				from = to
 			}
 		}
-
 	}
 
 	for _, node := range intersectionNodes {
 
 		// hanya append node intersection
 		surakartaNodes = append(surakartaNodes, *nodeMap[node])
-
 	}
-	return surakartaNodes, surakartaWays
+	graphEdges := []SurakartaWay{}
+	for _, way := range surakartaWays {
+
+		if len(way.IntersectionNodesID) > 0 {
+			graphEdges = append(graphEdges, way)
+		}
+	}
+
+	return surakartaNodes, surakartaWays, graphEdges
 }
 
 func getMaxspeedOneWayRoadType(way osm.Way) (float64, bool, bool, string) {

@@ -32,8 +32,8 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3(ways []SurakartaWay, 
 		return nearestStreets[i].Dist < nearestStreets[j].Dist
 	})
 
-	if len(nearestStreets) >= 10 {
-		nearestStreets = nearestStreets[:10]
+	if len(nearestStreets) >= 5 {
+		nearestStreets = nearestStreets[:5]
 	}
 	wantToSnapLoc := NewLocation(wantToSnap[0], wantToSnap[1])
 	best := 100000000.0

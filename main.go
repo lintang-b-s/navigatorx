@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	surakartaWays, ch, nodeIdxMap := alg.BikinGraphFromOpenstreetmap()
+	_, ch, nodeIdxMap, graphEdges := alg.BikinGraphFromOpenstreetmap()
 
 	db, err := pebble.Open("navigatorxDB", &pebble.Options{})
 	if err != nil {
@@ -27,7 +27,7 @@ func main() {
 	defer kvDB.Close()
 
 	go func() {
-		kvDB.CreateStreetKV(surakartaWays, nodeIdxMap)
+		kvDB.CreateStreetKV(graphEdges, nodeIdxMap)
 		runtime.GC()
 		runtime.GC()
 	}()

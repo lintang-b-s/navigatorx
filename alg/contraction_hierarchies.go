@@ -539,11 +539,6 @@ func (ch *ContractedGraph) calculatePriority(nodeIDx int32, contracted []bool) f
 	return float64(10*edgeDifference + 1*originalEdgesCount)
 }
 
-// type pqCHNode struct {
-// 	NodeIDx int32
-// 	rank    float64
-// 	index   int
-// }
 
 func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 	heap.Init(ch.PQNodeOrdering)

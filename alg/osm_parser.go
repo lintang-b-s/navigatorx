@@ -22,7 +22,7 @@ type nodeMapContainer struct {
 	mu      sync.Mutex
 }
 
-func BikinGraphFromOpenstreetmap() ([]SurakartaWay, *ContractedGraph, map[int64]int32) {
+func BikinGraphFromOpenstreetmap() ([]SurakartaWay, *ContractedGraph, map[int64]int32, []SurakartaWay) {
 	f, err := os.Open("./solo_jogja.osm.pbf")
 
 	if err != nil {
@@ -132,7 +132,7 @@ func BikinGraphFromOpenstreetmap() ([]SurakartaWay, *ContractedGraph, map[int64]
 	ctr.nodeMap = nil
 	runtime.GC()
 	runtime.GC()
-	surakartaWays, surakartaNodes := InitGraph(ways, trafficLightNodeIDMap)
+	surakartaWays, surakartaNodes, graphEdges := InitGraph(ways, trafficLightNodeIDMap)
 	ch := NewContractedGraph()
 	nodeIdxMap := ch.InitCHGraph(surakartaNodes, len(ways))
 	convertOSMNodeIDToGraphID(surakartaWays, nodeIdxMap)
@@ -143,14 +143,14 @@ func BikinGraphFromOpenstreetmap() ([]SurakartaWay, *ContractedGraph, map[int64]
 
 	WriteWayTypeToCsv(trafficLightNodeMap, "traffic_light_node.csv")
 
-	return surakartaWays, ch, nodeIdxMap
+	return surakartaWays, ch, nodeIdxMap, graphEdges
 }
 
 func convertOSMNodeIDToGraphID(surakartaWays []SurakartaWay, nodeIDxMap map[int64]int32) {
 	for i := range surakartaWays {
 		way := &surakartaWays[i]
 		for i, nodeID := range way.IntersectionNodesID {
-			
+
 			way.IntersectionNodesID[i] = int64(nodeIDxMap[nodeID])
 		}
 	}
