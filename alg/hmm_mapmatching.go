@@ -17,14 +17,12 @@ type State struct {
 	Lat       float64
 	Lon       float64
 	Dist      float64
-	EdgeBound Bound
+	EdgeID int32
 }
 
-// snapping gps ke street nodenya salah, projectionnya gak di dalam jalan
 // https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
 // https://www.ismll.uni-hildesheim.de/lehre/semSpatial-10s/script/6.pdf
 // https://github.com/bmwcarit/offline-map-matching/blob/master/src/test/java/com/bmw/mapmatchingutils/OfflineMapMatcherTest.java
-// masih salah pas pake data gps trip paper microsoft
 func (ch ContractedGraph) HiddenMarkovModelMapMatching(gps []StateObservationPair) []CHNode2 {
 
 	// obsStateDistDiff := []float64{}
@@ -45,7 +43,7 @@ func (ch ContractedGraph) HiddenMarkovModelMapMatching(gps []StateObservationPai
 				var stateRouteLength float64
 				var currTransitionProb float64
 
-				if currState.EdgeBound == nextState.EdgeBound {
+				if currState.EdgeID == nextState.EdgeID {
 					stateRouteLength = HaversineDistance(NewLocation(currState.Lat, currState.Lon), NewLocation(nextState.Lat, nextState.Lon))
 				} else {
 					_, _, dijkstraSp := ch.ShortestPathBiDijkstra(currState.NodeID, nextState.NodeID)
@@ -80,12 +78,7 @@ func (ch ContractedGraph) HiddenMarkovModelMapMatching(gps []StateObservationPai
 			emissionProb[currState.ID][i] = currEmissionProb
 
 			states = append(states, ViterbiNode{ID: currState.ID, NodeID: currState.NodeID, Lat: currState.Lat, Lon: currState.Lon})
-
-			// 
 		}
-
-		// transitionProb = updateTransitionProb(transitionProb, dts, currRoadNodes, nextRoadNodes)
-
 		obs = append(obs, ViterbiNode{ID: i, NodeID: -1})
 
 		if i == len(gps)-2 {

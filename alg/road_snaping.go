@@ -43,7 +43,7 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3(ways []SurakartaWay, 
 
 		// mencari 2 point dijalan yg paling dekat dg gps
 		streetNodes := []NodePoint{}
-		for _, nodeID := range street.Street.NodesID {
+		for _, nodeID := range street.Street.IntersectionNodesID {
 
 			nodeIdx := nodeID
 			node := ch.ContractedNodes[nodeIdx]
@@ -55,6 +55,9 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3(ways []SurakartaWay, 
 			return streetNodes[i].Dist < streetNodes[j].Dist
 		})
 
+		if len(streetNodes) < 2 {
+			continue
+		}
 		nearestStPoint := streetNodes[0].Node
 		nearestStNodeIdx := streetNodes[0].Idx
 		secondNearestStPoint := streetNodes[1].Node
@@ -123,11 +126,11 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 		projection := ProjectPointToLineCoord(streetNodes[0].Node, streetNodes[1].Node, wantToSnap)
 		projectionLoc := NewLocation(projection.Lat, projection.Lon)
 		sts = append(sts, State{
-			NodeID:    streetNodes[0].Idx,
-			Lat:       projection.Lat,
-			Lon:       projection.Lon,
-			Dist:      HaversineDistance(wantToSnapLoc, projectionLoc), // pake nearestLoc buat dist nya lumayan bagus
-			EdgeBound: street.Bound,
+			NodeID: streetNodes[0].Idx,
+			Lat:    projection.Lat,
+			Lon:    projection.Lon,
+			Dist:   HaversineDistance(wantToSnapLoc, projectionLoc), // pake nearestLoc buat dist nya lumayan bagus
+			EdgeID: street.ID,
 		})
 
 	}
@@ -138,9 +141,9 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 			sts = sts[:len(sts)-1]
 		}
 	}
-	
+
 	// bagusan pake rtree & projection di lat & lon nya
-	// max dist 25 paling bagus 
+	// max dist 25 paling bagus
 
 	return sts
 }

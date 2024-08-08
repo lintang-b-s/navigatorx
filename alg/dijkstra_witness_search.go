@@ -5,24 +5,6 @@ import (
 	"math"
 )
 
-type dijkstraNode struct {
-	rank   float64
-	index  int
-	CHNode CHNode2
-}
-
-type nodeMapCHDijkstra map[int32]*dijkstraNode
-
-func (nm nodeMapCHDijkstra) getCHDJ(p CHNode2) *dijkstraNode {
-	n, ok := nm[p.IDx]
-
-	if !ok {
-		n = &dijkstraNode{CHNode: p}
-
-		nm[p.IDx] = n
-	}
-	return n
-}
 
 func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int32, ignoreNodeIDx int32,
 	acceptedWeight float64, maxSettledNodes int, pMax float64, contracted []bool) float64 {
@@ -30,10 +12,10 @@ func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int3
 	visited := make(map[int32]bool)
 	cost := make(map[int32]float64)
 
-	nm := nodeMapCHDijkstra{}
-	nq := &priorityQueueDijkstra{}
+	nm := nodeMapCHBiDijkstra{}
+	nq := &priorityQueue[CHNode2]{}
 	heap.Init(nq)
-	fromNode := nm.getCHDJ(ch.ContractedNodes[fromNodeIDx])
+	fromNode := nm.getCHDJ2(ch.ContractedNodes[fromNodeIDx])
 	fromNode.rank = 0
 	heap.Push(nq, fromNode)
 
@@ -50,12 +32,12 @@ func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int3
 			return cost[targetNodeIDx]
 		}
 
-		curr := heap.Pop(nq).(*dijkstraNode)
-		if contracted[curr.CHNode.IDx] {
+		curr := heap.Pop(nq).(*priorityQueueNode[CHNode2])
+		if contracted[curr.item.IDx] {
 			continue
 		}
-		if curr == nm.getCHDJ(ch.ContractedNodes[targetNodeIDx]) {
-			return cost[curr.CHNode.IDx]
+		if curr == nm.getCHDJ2(ch.ContractedNodes[targetNodeIDx]) {
+			return cost[curr.item.IDx]
 		}
 
 		if curr.rank > pMax {
@@ -66,8 +48,8 @@ func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int3
 			return math.MaxFloat64
 		}
 
-		visited[curr.CHNode.IDx] = true
-		for _, outIDx := range ch.ContractedFirstOutEdge[curr.CHNode.IDx] {
+		visited[curr.item.IDx] = true
+		for _, outIDx := range ch.ContractedFirstOutEdge[curr.item.IDx] {
 			neighbor := ch.ContractedOutEdges[outIDx]
 			if visited[neighbor.ToNodeIDX] || neighbor.ToNodeIDX == ignoreNodeIDx ||
 				contracted[neighbor.ToNodeIDX] {
@@ -75,8 +57,8 @@ func (ch *ContractedGraph) dijkstraWitnessSearch(fromNodeIDx, targetNodeIDx int3
 			}
 
 			neighborP := ch.ContractedNodes[neighbor.ToNodeIDX]
-			neighborNode := nm.getCHDJ(neighborP)
-			newCost := cost[curr.CHNode.IDx] + neighbor.Weight
+			neighborNode := nm.getCHDJ2(neighborP)
+			newCost := cost[curr.item.IDx] + neighbor.Weight
 			_, ok := cost[neighbor.ToNodeIDX]
 			if !ok || newCost < cost[neighbor.ToNodeIDX] {
 				cost[neighbor.ToNodeIDX] = newCost

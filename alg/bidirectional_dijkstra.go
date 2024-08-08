@@ -11,19 +11,15 @@ type cameFromPair struct {
 	NodeIDx int32
 }
 
-type bidijkstraNode struct {
-	rank   float64
-	index  int
-	CHNode CHNode2
-}
+type nodeMapCHBiDijkstra map[int32]*priorityQueueNode[CHNode2]
 
-type nodeMapCHBiDijkstra map[int32]*bidijkstraNode
-
-func (nm nodeMapCHBiDijkstra) getCHDJ2(p CHNode2) *bidijkstraNode {
+func (nm nodeMapCHBiDijkstra) getCHDJ2(p CHNode2) *priorityQueueNode[CHNode2] {
 	n, ok := nm[p.IDx]
 
 	if !ok {
-		n = &bidijkstraNode{CHNode: p}
+		var bidijkstraNode priorityQueueNode[CHNode2]
+		bidijkstraNode.item = p
+		n = &bidijkstraNode
 
 		nm[p.IDx] = n
 	}
@@ -38,8 +34,8 @@ referensi:
 */
 
 func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, float64, float64) {
-	forwQ := &priorityQueueBiDijkstra{}
-	backQ := &priorityQueueBiDijkstra{}
+	forwQ := &priorityQueue[CHNode2]{}
+	backQ := &priorityQueue[CHNode2]{}
 	df := make(map[int32]float64)
 	db := make(map[int32]float64)
 	df[from] = 0.0
@@ -95,7 +91,6 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 
 		ff := *frontier
 		if len(ff) == 0 {
-			fmt.Printf("~debug~ aneh ajg")
 			return []CHNode2{}, -1, -1
 		}
 		if ff[0].rank >= estimate {
@@ -105,19 +100,19 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 				backFinished = true
 			}
 		} else {
-			node := heap.Pop(frontier).(*bidijkstraNode)
+			node := heap.Pop(frontier).(*priorityQueueNode[CHNode2])
 			if node.rank > estimate {
 				break
 			}
 			if turnF {
 
-				for _, arc := range ch.ContractedFirstOutEdge[node.CHNode.IDx] {
+				for _, arc := range ch.ContractedFirstOutEdge[node.item.IDx] {
 					edge := ch.ContractedOutEdges[arc]
 					toNIDx := edge.ToNodeIDX
 					cost := edge.Weight
-					if ch.ContractedNodes[node.CHNode.IDx].OrderPos < ch.ContractedNodes[toNIDx].OrderPos {
+					if ch.ContractedNodes[node.item.IDx].OrderPos < ch.ContractedNodes[toNIDx].OrderPos {
 						// upward graph
-						newCost := cost + df[node.CHNode.IDx]
+						newCost := cost + df[node.item.IDx]
 						_, ok := df[toNIDx]
 						if !ok || newCost < df[toNIDx] {
 							df[toNIDx] = newCost
@@ -125,7 +120,7 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 							neighborNode.rank = newCost
 							heap.Push(frontier, neighborNode)
 
-							cameFromf[toNIDx] = cameFromPair{edge, node.CHNode.IDx}
+							cameFromf[toNIDx] = cameFromPair{edge, node.item.IDx}
 						}
 
 						_, ok = db[toNIDx]
@@ -142,14 +137,14 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 
 			} else {
 
-				for _, arc := range ch.ContractedFirstInEdge[node.CHNode.IDx] {
+				for _, arc := range ch.ContractedFirstInEdge[node.item.IDx] {
 
 					edge := ch.ContractedInEdges[arc]
 					toNIDx := edge.ToNodeIDX
 					cost := edge.Weight
-					if ch.ContractedNodes[node.CHNode.IDx].OrderPos < ch.ContractedNodes[toNIDx].OrderPos {
+					if ch.ContractedNodes[node.item.IDx].OrderPos < ch.ContractedNodes[toNIDx].OrderPos {
 						// upward graph
-						newCost := cost + db[node.CHNode.IDx]
+						newCost := cost + db[node.item.IDx]
 						_, ok := db[toNIDx]
 						if !ok || newCost < db[toNIDx] {
 							db[toNIDx] = newCost
@@ -158,7 +153,7 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 							neighborNode.rank = newCost
 							heap.Push(frontier, neighborNode)
 
-							cameFromb[toNIDx] = cameFromPair{edge, node.CHNode.IDx}
+							cameFromb[toNIDx] = cameFromPair{edge, node.item.IDx}
 						}
 
 						_, ok = df[toNIDx]
@@ -255,7 +250,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 
 	}
 
-	fPath = reverseCH2(fPath)[:len(fPath)-1]
+	fPath = reverseG(fPath)[:len(fPath)-1]
 	path := []CHNode2{}
 	path = append(path, fPath...)
 	path = append(path, bPath...)

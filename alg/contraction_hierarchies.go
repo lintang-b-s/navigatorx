@@ -81,7 +81,7 @@ type ContractedGraph struct {
 	IsLoaded             bool
 	IsAStarLoaded        bool
 
-	PQNodeOrdering *priorityQueueNodeOrdering
+	PQNodeOrdering *priorityQueue[int32]
 }
 
 var maxPollFactorHeuristic = 5
@@ -97,9 +97,11 @@ func NewContractedGraph() *ContractedGraph {
 	}
 }
 
+// Routingkit cuma 1jt edges & 470k nodes setelah parse osm ke graph
+// punyaku 800k edges & 300k nodes setelah parse osm ke graph
+// punyaku 2jt edges & 300k nodes setelah ch
 func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]int32 {
 	gLen := len(nodes)
-	count := 0
 	var nodeIdxMap = make(map[int64]int32)
 
 	bar := progressbar.NewOptions(3,
@@ -116,11 +118,11 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 			BarEnd:        "]",
 		}))
 
-	for _, node := range nodes {
+	for i, node := range nodes {
 
 		ch.AStarGraph = append(ch.AStarGraph, CHNode{
 			OutEdges:     []EdgePair{},
-			IDx:          int32(count),
+			IDx:          int32(i),
 			Lat:          node.Lat,
 			Lon:          node.Lon,
 			StreetName:   node.StreetName,
@@ -128,22 +130,22 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 		})
 
 		ch.ContractedNodes = append(ch.ContractedNodes, CHNode2{
-			IDx:          int32(count),
+			IDx:          int32(i),
 			Lat:          node.Lat,
 			Lon:          node.Lon,
 			StreetName:   node.StreetName,
 			TrafficLight: node.TrafficLight,
 		})
 
-		nodeIdxMap[node.ID] = int32(count)
-		count++
+		nodeIdxMap[node.ID] = int32(i)
+
 	}
 	bar.Add(1)
 	ch.Metadata.degrees = make([]int, gLen)
 	ch.Metadata.InEdgeOrigCount = make([]int, gLen)
 	ch.Metadata.OutEdgeOrigCount = make([]int, gLen)
 	ch.Metadata.ShortcutsCount = 0
-	ch.PQNodeOrdering = &priorityQueueNodeOrdering{}
+	ch.PQNodeOrdering = &priorityQueue[int32]{}
 
 	outEdgeIDx := int32(0)
 	inEdgeIDx := int32(0)
@@ -201,7 +203,7 @@ func (ch *ContractedGraph) InitCHGraph(nodes []Node, edgeCount int) map[int64]in
 	// ch.ContractedGraph = ch.OrigGraph
 	ch.Metadata.EdgeCount = edgeCount
 	ch.Metadata.NodeCount = gLen
-	ch.Metadata.MeanDegree = float64(edgeCount * 1.0 / gLen)
+ 	ch.Metadata.MeanDegree = float64(edgeCount * 1.0 / gLen)
 
 	return nodeIdxMap
 }
@@ -238,22 +240,22 @@ func (ch *ContractedGraph) Contraction() {
 		}))
 
 	for nq.Len() != 0 {
-		polledNode := heap.Pop(nq).(*pqCHNode)
+		polledNode := heap.Pop(nq).(*priorityQueueNode[int32])
 
 		// lazy update
-		priority := ch.calculatePriority(polledNode.NodeIDx, contracted)
+		priority := ch.calculatePriority(polledNode.item, contracted)
 		pq := *nq
 		if len(pq) > 0 && priority > pq[0].rank {
 			// & priority >  pq[0].rank
 			// current node importantnya lebih tinggi dari next pq item
-			heap.Push(nq, &pqCHNode{NodeIDx: polledNode.NodeIDx, rank: priority})
+			heap.Push(nq, &priorityQueueNode[int32]{item: polledNode.item, rank: priority})
 			continue
 		}
 
-		ch.ContractedNodes[polledNode.NodeIDx].OrderPos = orderNum
+		ch.ContractedNodes[polledNode.item].OrderPos = orderNum
 
-		ch.contractNode(polledNode.NodeIDx, level, contracted[polledNode.NodeIDx], contracted)
-		contracted[polledNode.NodeIDx] = true
+		ch.contractNode(polledNode.item, level, contracted[polledNode.item], contracted)
+		contracted[polledNode.item] = true
 		level++
 		orderNum++
 		bar.Add(1)
@@ -483,7 +485,7 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 			}
 
 		}
-		ind = reverse(ind)
+		ind = reverseG(ind)
 		for _, edgeIDx := range ind {
 			quickDelete(edgeIDx, &ch.ContractedFirstOutEdge[nd], "f")
 			ch.Metadata.degrees[nd]--
@@ -504,7 +506,7 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 			}
 
 		}
-		ind = reverse(ind)
+		ind = reverseG(ind)
 		for _, edgeIDx := range ind {
 			quickDelete(edgeIDx, &ch.ContractedFirstInEdge[nd], "b")
 			ch.Metadata.degrees[nd]--
@@ -538,11 +540,11 @@ func (ch *ContractedGraph) calculatePriority(nodeIDx int32, contracted []bool) f
 	return float64(10*edgeDifference + 1*originalEdgesCount)
 }
 
-type pqCHNode struct {
-	NodeIDx int32
-	rank    float64
-	index   int
-}
+// type pqCHNode struct {
+// 	NodeIDx int32
+// 	rank    float64
+// 	index   int
+// }
 
 func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 	heap.Init(ch.PQNodeOrdering)
@@ -563,11 +565,9 @@ func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 	contracted := make([]bool, ch.Metadata.NodeCount)
 
 	for nodeIDx, _ := range ch.ContractedNodes {
-		// if (isContracted(node)) {
-		// 	continue
-		// }
+
 		priority := ch.calculatePriority(int32(nodeIDx), contracted)
-		heap.Push(ch.PQNodeOrdering, &pqCHNode{NodeIDx: int32(nodeIDx), rank: priority})
+		heap.Push(ch.PQNodeOrdering, &priorityQueueNode[int32]{item: int32(nodeIDx), rank: priority})
 		bar.Add(1)
 	}
 	fmt.Println("")
@@ -575,43 +575,13 @@ func (ch *ContractedGraph) UpdatePrioritiesOfRemainingNodes() {
 
 func (n *CHNode) PathEstimatedCostETA(to CHNode) float64 {
 
-	toN := to
-	absLat := toN.Lat - n.Lat
-	if absLat < 0 {
-		absLat = -absLat
-	}
-	absLon := toN.Lon - n.Lon
-	if absLon < 0 {
-		absLon = -absLon
-	}
+	currLoc := NewLocation(n.Lat, n.Lon)
+	toLoc := NewLocation(to.Lat, to.Lon)
+	dist := HaversineDistance(currLoc, toLoc)
 
-	absLatSq := absLat * absLat
-	absLonSq := absLon * absLon
-
-	// r := absLat + absLon)
-	maxSpeed := 90.0 * 1000.0 / 60.0                      // m/min
-	r := math.Sqrt(absLatSq+absLonSq) * 100000 / maxSpeed // * 100000 -> meter
+	maxSpeed := 90.0 * 1000.0 / 60.0         // m/min
+	r := math.Sqrt(dist) * 100000 / maxSpeed // * 100000 -> meter
 	return r
-}
-
-func reverseCH2(p []CHNode2) []CHNode2 {
-	for i, j := 0, len(p)-1; i < j; i, j = i+1, j-1 {
-		p[i], p[j] = p[j], p[i]
-	}
-	return p
-}
-func reverseCH(p []CHNode) []CHNode {
-	for i, j := 0, len(p)-1; i < j; i, j = i+1, j-1 {
-		p[i], p[j] = p[j], p[i]
-	}
-	return p
-}
-
-func reverse(arr []int) []int {
-	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
-		arr[i], arr[j] = arr[j], arr[i]
-	}
-	return arr
 }
 
 func (ch *ContractedGraph) IsChReady() bool {

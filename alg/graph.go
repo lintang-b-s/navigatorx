@@ -18,7 +18,9 @@ type Node struct {
 	ID           int64
 	StreetName   string
 	TrafficLight bool
+	UsedInRoad   int
 }
+
 func RenderPath2(path []CHNode2) string {
 	s := ""
 	coords := make([][]float64, 0)

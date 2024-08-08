@@ -6,20 +6,15 @@ import (
 	"github.com/twpayne/go-polyline"
 )
 
-type astarNodeCH struct {
-	rank   float64
-	chNode CHNode
-	parent *astarNodeCH
-	index  int
-}
 
-type nodeMapCH map[int32]*astarNodeCH
 
-func (nm nodeMapCH) getCH(p CHNode) *astarNodeCH {
+type nodeMapCH map[int32]*priorityQueueNode[CHNode]
+
+func (nm nodeMapCH) getCH(p CHNode) *priorityQueueNode[CHNode] {
 	n, ok := nm[p.IDx]
 
 	if !ok {
-		n = &astarNodeCH{chNode: p}
+		n = &priorityQueueNode[CHNode]{item: p}
 
 		nm[p.IDx] = n
 	}
@@ -29,7 +24,7 @@ func (nm nodeMapCH) getCH(p CHNode) *astarNodeCH {
 // https://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string, eta float64, found bool, dist float64) {
 	nm := nodeMapCH{}
-	nq := &priorityQueueCH{}
+	nq := &priorityQueue[CHNode2]{}
 	heap.Init(nq)
 	fromNode := nm.getCH(ch.AStarGraph[from])
 	fromNode.rank = 0
@@ -47,7 +42,7 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 			return
 		}
 
-		current := heap.Pop(nq).(*astarNodeCH)
+		current := heap.Pop(nq).(*priorityQueueNode[CHNode])
 		if current == nm.getCH(ch.AStarGraph[to]) {
 			s := ""
 			etaTraffic := 0.0
@@ -55,14 +50,14 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 			path := []CHNode{}
 			curr := current
 			for curr.rank != 0 {
-				if curr.chNode.TrafficLight {
+				if curr.item.TrafficLight {
 					etaTraffic += 2.0
 				}
-				path = append(path, curr.chNode)
-				curr = nm.getCH(ch.AStarGraph[cameFrom[curr.chNode.IDx].IDx])
+				path = append(path, curr.item)
+				curr = nm.getCH(ch.AStarGraph[cameFrom[curr.item.IDx].IDx])
 			}
 			path = append(path, ch.AStarGraph[from])
-			path = reverseCH(path)
+			path = reverseG(path)
 			coords := make([][]float64, 0)
 
 			pathN := []CHNode{}
@@ -72,19 +67,19 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 			}
 			s = string(polyline.EncodeCoords(coords))
 
-			return pathN, s, costSoFar[current.chNode.IDx] + etaTraffic, true, distSoFar[current.chNode.IDx] / 1000
+			return pathN, s, costSoFar[current.item.IDx] + etaTraffic, true, distSoFar[current.item.IDx] / 1000
 		}
 
-		for _, neighbor := range current.chNode.OutEdges {
-			newCost := costSoFar[current.chNode.IDx] + neighbor.Weight
-			dist := distSoFar[current.chNode.IDx] + neighbor.Dist
+		for _, neighbor := range current.item.OutEdges {
+			newCost := costSoFar[current.item.IDx] + neighbor.Weight
+			dist := distSoFar[current.item.IDx] + neighbor.Dist
 			neighborP := ch.AStarGraph[neighbor.ToNodeIDX]
 			neighborNode := nm.getCH(neighborP)
 			_, ok := costSoFar[neighborP.IDx]
 			if !ok || newCost < costSoFar[neighborP.IDx] {
 				costSoFar[neighborP.IDx] = newCost
 				distSoFar[neighborP.IDx] = dist
-				cameFrom[neighborP.IDx] = &ch.AStarGraph[current.chNode.IDx]
+				cameFrom[neighborP.IDx] = &ch.AStarGraph[current.item.IDx]
 				priority := newCost + neighborP.PathEstimatedCostETA(ch.AStarGraph[to])
 				neighborNode.rank = priority
 				heap.Push(nq, neighborNode)
