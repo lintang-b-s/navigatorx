@@ -13,6 +13,9 @@ type ContractedGraph interface {
 	AStarCH(from, to int32) (pathN []alg.CHNode, path string, eta float64, found bool, dist float64)
 	SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []alg.SurakartaWay, wantToSnap []float64) []alg.State
 	HiddenMarkovModelMapMatching(gps []alg.StateObservationPair) []alg.CHNode2
+	SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNodeIdx int32, err error)
+	ShortestPathManyToManyBiDijkstra(from int32, to []int32) ([][]alg.CHNode2, []float64, []float64)
+	ShortestPathManyToManyBiDijkstraWorkers(from []int32, to []int32) map[int32]map[int32]alg.SPSingleResultResult
 	IsChReady() bool
 }
 
@@ -92,9 +95,21 @@ func (uc *NavigationService) SnapLocToStreetNode(lat, lon float64) (int32, error
 		return 0, err
 	}
 	streetNodeIDx := uc.CH.SnapLocationToRoadNetworkNodeH3(ways, []float64{lat, lon})
+	// streetNodeIDx, _ := uc.CH.SnapLocationToRoadNetworkNodeRtree(lat, lon)
 
 	return streetNodeIDx, nil
 }
+
+// func (uc *NavigationService) SnapLocToStreetNode(lat, lon float64) (int32, error) {
+// 	// ways, err := uc.KV.GetNearestStreetsFromPointCoord(lat, lon)
+// 	// if err != nil {
+// 	// 	return 0, err
+// 	// }
+// 	// streetNodeIDx := uc.CH.SnapLocationToRoadNetworkNodeH3(ways, []float64{lat, lon})
+// 	streetNodeIDx, _ := uc.CH.SnapLocationToRoadNetworkNodeRtree(lat, lon)
+
+// 	return streetNodeIDx, nil
+// }
 
 type ShortestPathResult struct {
 	PathsCH []alg.CHNode2
@@ -151,9 +166,13 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	wg.Add(1)
 	wg.Add(1)
 
-	go func() {
+	for i := 0; i < 2; i++ {
 
-		defer wg.Done()
+	}
+
+	go func(wgg *sync.WaitGroup) {
+
+		defer wgg.Done()
 		var pN = []alg.CHNode2{}
 		var ppp = []alg.CHNode{}
 		var eta float64
@@ -179,11 +198,11 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 			Index:   0,
 			IsCH:    isCH,
 		}
-	}()
+	}(&wg)
 
-	go func() {
+	go func(wgg *sync.WaitGroup) {
 
-		defer wg.Done()
+		defer wgg.Done()
 		var pN = []alg.CHNode2{}
 		var ppp = []alg.CHNode{}
 		var eta float64
@@ -210,31 +229,30 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 			Index:   1,
 			IsCH:    isCH,
 		}
+
+	}(&wg)
+
+	go func() {
+		wg.Wait()
+		close(pathChan)
 	}()
 
-	i := 0
 	for p := range pathChan {
 		if p.Index == 0 {
 			paths[0] = p
 		} else {
 			paths[1] = p
 		}
-		i++
-		if i == 2 {
-			break
-		}
 	}
-
-	wg.Wait()
-	close(pathChan)
 
 	concatedPaths := []alg.CHNode{}
 	concatedPathsCH := []alg.CHNode2{}
-	paths[0].Paths = paths[0].Paths[:len(paths[0].Paths)-1] // exclude start node dari paths[1]
 	if !paths[0].IsCH {
+		paths[0].Paths = paths[0].Paths[:len(paths[0].Paths)-1] // exclude start node dari paths[1]
 		concatedPaths = append(concatedPaths, paths[0].Paths...)
-		concatedPaths = append(concatedPaths, paths[1].Paths...)
+	concatedPaths = append(concatedPaths, paths[1].Paths...)
 	} else {
+		paths[0].PathsCH = paths[0].PathsCH[:len(paths[0].PathsCH)-1] // exclude start node dari paths[1]
 		concatedPathsCH = append(concatedPathsCH, paths[0].PathsCH...)
 		concatedPathsCH = append(concatedPathsCH, paths[1].PathsCH...)
 	}
@@ -244,7 +262,6 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	found := paths[0].Found && paths[1].Found
 	isCH := paths[0].IsCH
 	// eta satuannya minute
-	// dist := 0
 	if !found {
 		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, domain.WrapErrorf(err, domain.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
 	}
@@ -256,7 +273,6 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	} else {
 		n, err = alg.CreateTurnByTurnNavigationCH(concatedPathsCH)
 	}
-	// var n []alg.Navigation
 	if err != nil {
 		return alg.RenderPath(concatedPaths), dist, n, found, route, eta, isCH, nil
 	}
@@ -307,16 +323,16 @@ func (uc *NavigationService) HiddenMarkovModelMapMatching(ctx context.Context, g
 	hmmPair := []alg.StateObservationPair{}
 
 	stateID := 0
-	for _, gpsPoint := range gps {
-		// if i < len(gps)-1 && len(gps) > 150 {
-		// 	// preprocessing , buang gps points yang jaraknya lebih dari 2*4.07 meter dari previous gps point
-		// 	// (Hidden Markov Map Matching Through Noise and Sparseness 4.1) , biar gak terlalu lama viterbinya O(T*|S|^2)
-		// 	currGpsLoc := alg.NewLocation(gpsPoint.Lat), gpsPoint.Lon))
-		// 	nextGpsLoc := alg.NewLocation(gps[i+1].Lat), gps[i+1].Lon))
-		// 	if alg.HaversineDistance(currGpsLoc, nextGpsLoc)*1000 >= 2*4.07 {
-		// 		continue
-		// 	}
-		// }
+	for i, gpsPoint := range gps {
+		if i < len(gps)-1 && len(gps) > 300 {
+			// preprocessing , buang gps points yang jaraknya lebih dari 2*4.07 meter dari previous gps point
+			// (Hidden Markov Map Matching Through Noise and Sparseness 4.1) , biar gak terlalu lama viterbinya O(T*|S|^2)
+			currGpsLoc := alg.NewLocation(gpsPoint.Lat, gpsPoint.Lon)
+			nextGpsLoc := alg.NewLocation(gps[i+1].Lat, gps[i+1].Lon)
+			if alg.HaversineDistance(currGpsLoc, nextGpsLoc)*1000 >= 2*4.07 {
+				continue
+			}
+		}
 		nearestRoadNodes, err := uc.NearestStreetNodesForMapMatching(gpsPoint.Lat, gpsPoint.Lon)
 		if len(nearestRoadNodes) == 0 {
 			continue
@@ -343,6 +359,57 @@ func (uc *NavigationService) HiddenMarkovModelMapMatching(ctx context.Context, g
 
 	path := uc.CH.HiddenMarkovModelMapMatching(hmmPair)
 	return alg.RenderPath2(path), path, nil
+}
+
+type TargetResult struct {
+	TargetCoord alg.Coordinate
+	Path        string
+	Dist        float64
+	ETA         float64
+}
+
+func (uc *NavigationService) ManyToManyQuery(ctx context.Context, sourcesLat, sourcesLon, destsLat, destsLon []float64) map[alg.Coordinate][]TargetResult {
+	sources := []int32{}
+	dests := []int32{}
+
+	for i := 0; i < len(sourcesLat); i++ {
+		srcNode, _ := uc.SnapLocToStreetNode(sourcesLat[i], sourcesLon[i])
+		sources = append(sources, srcNode)
+	}
+
+	for i := 0; i < len(destsLat); i++ {
+		dstNode, _ := uc.SnapLocToStreetNode(destsLat[i], destsLon[i])
+		dests = append(dests, dstNode)
+	}
+
+	manyToManyRes := make(map[alg.Coordinate][]TargetResult)
+
+	scMap := uc.CH.ShortestPathManyToManyBiDijkstraWorkers(sources, dests)
+
+	for i, src := range sources {
+		srcCoord := alg.Coordinate{
+			Lat: sourcesLat[i],
+			Lon: sourcesLon[i],
+		}
+
+		for j, dest := range dests {
+			currPath := alg.RenderPath2(scMap[src][dest].Paths)
+			currDist := scMap[src][dest].Dist
+			currETA := scMap[src][dest].Eta
+
+			manyToManyRes[srcCoord] = append(manyToManyRes[srcCoord], TargetResult{
+				TargetCoord: alg.Coordinate{
+					Lat: destsLat[j],
+					Lon: destsLon[j],
+				},
+				Path: currPath,
+				Dist: currDist,
+				ETA:  currETA,
+			})
+		}
+
+	}
+	return manyToManyRes
 }
 
 func (uc *NavigationService) NearestStreetNodesForMapMatching(lat, lon float64) ([]alg.State, error) {

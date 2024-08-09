@@ -47,8 +47,6 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 	}
 
 	fmt.Println("")
-	fmt.Printf("total kv: %d", len(kv))
-	fmt.Println("")
 	bar = progressbar.NewOptions(len(kv),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
 		progressbar.OptionEnableColorCodes(true),
@@ -63,21 +61,42 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 			BarEnd:        "]",
 		}))
 
-	for keyStr, valArr := range kv {
-		key := []byte(keyStr)
-		val, err := CompressWay(valArr)
+	workers := NewWorkerPool[SaveWayJobItem, interface{}](4, len(kv))
 
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := k.db.Set(key, val, pebble.Sync); err != nil {
-			log.Fatal(err)
-		}
+	for keyStr, valArr := range kv {
+		workers.AddJob(SaveWayJobItem{keyStr, valArr})
 		bar.Add(1)
 	}
+	close(workers.jobQueue)
+
+	workers.Start(k.SaveWay)
+	workers.Wait()
+
 	fmt.Println("")
 	fmt.Println("A* Ready!!")
+	fmt.Println("")
 	fmt.Println("server started at :5000")
+	fmt.Println("")
+}
+
+type SaveWayJobItem struct {
+	KeyStr string
+	ValArr []SurakartaWay
+}
+
+func (k *KVDB) SaveWay(wayItem SaveWayJobItem) interface{} {
+	keyStr := wayItem.KeyStr
+	valArr := wayItem.ValArr
+	key := []byte(keyStr)
+	val, err := CompressWay(valArr)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := k.db.Set(key, val, pebble.Sync); err != nil {
+		log.Fatal(err)
+	}
+	return nil
 }
 
 func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay, error) {

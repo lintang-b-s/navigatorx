@@ -31,7 +31,7 @@ func main() {
 		runtime.GC()
 		runtime.GC()
 	}()
-	// bikinRtreeStreetNetwork(surakartaWays, ch, nodeIdxMap)
+	// alg.BikinRtreeStreetNetwork(graphEdges, ch, nodeIdxMap)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

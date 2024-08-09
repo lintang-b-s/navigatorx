@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"lintang/navigatorx/alg"
 	"lintang/navigatorx/domain"
+	"lintang/navigatorx/service"
 	"lintang/navigatorx/util"
 	"math"
 	"net/http"
@@ -32,6 +33,7 @@ type NavigationService interface {
 		dstLat float64, dstLon float64) (string, []alg.Navigation, []alg.Coordinate, float64, float64, error)
 
 	HiddenMarkovModelMapMatching(ctx context.Context, gps []alg.Coordinate) (string, []alg.CHNode2, error)
+	ManyToManyQuery(ctx context.Context, sourcesLat, sourcesLon, destsLat, destsLon []float64) map[alg.Coordinate][]service.TargetResult
 }
 
 type NavigationHandler struct {
@@ -46,7 +48,8 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 			r.Post("/shortestPath", handler.shortestPathETA)
 			r.Post("/shortestPathAlternativeStreet", handler.shortestPathAlternativeStreetETA)
 			r.Post("/shortestPathCH", handler.shortestPathETACH)
-			r.Post("/mapMatching", handler.HiddenMarkovModelMapMatching) 
+			r.Post("/mapMatching", handler.HiddenMarkovModelMapMatching)
+			r.Post("/manyToManyQuery", handler.ManyToManyQuery)
 		})
 	})
 }
@@ -279,6 +282,102 @@ func (h *NavigationHandler) HiddenMarkovModelMapMatching(w http.ResponseWriter, 
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, RenderMapMatchingResponse(p, pNode))
+}
+
+type ManyToManyQueryRequest struct {
+	Sources []Coord `json:"sources" validate:"required,dive"`
+	Targets []Coord `json:"targets" validate:"required,dive"`
+}
+
+func (s *ManyToManyQueryRequest) Bind(r *http.Request) error {
+	if len(s.Sources) == 0 || len(s.Targets) == 0 {
+		return errors.New("invalid request")
+	}
+	return nil
+}
+
+type NodeRes struct {
+	Lat float64 `json:"lat" `
+	Lon float64 `json:"lon" `
+}
+
+type TargetRes struct {
+	Target NodeRes `json:"target"`
+	Path   string  `json:"path"`
+	Dist   float64 `json:"distance"`
+	ETA    float64 `json:"ETA"`
+}
+
+type SrcTargetPair struct {
+	Source  NodeRes     `json:"source"`
+	Targets []TargetRes `json:"targets"`
+}
+
+type ManyToManyQueryResponse struct {
+	Results []SrcTargetPair `json:"results"`
+}
+
+func (h *NavigationHandler) ManyToManyQuery(w http.ResponseWriter, r *http.Request) {
+	data := &ManyToManyQueryRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	sourcesLat, sourcesLon, destsLat, destsLon := []float64{}, []float64{}, []float64{}, []float64{}
+	for _, s := range data.Sources {
+		sourcesLat = append(sourcesLat, s.Lat)
+		sourcesLon = append(sourcesLon, s.Lon)
+	}
+	for _, d := range data.Targets {
+		destsLat = append(destsLat, d.Lat)
+		destsLon = append(destsLon, d.Lon)
+	}
+
+	results := h.svc.ManyToManyQuery(r.Context(), sourcesLat, sourcesLon, destsLat, destsLon)
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, RenderManyToManyQueryResponse(results))
+}
+
+func RenderManyToManyQueryResponse(res map[alg.Coordinate][]service.TargetResult) *ManyToManyQueryResponse {
+	results := []SrcTargetPair{}
+	for k, v := range res {
+
+		targets := []TargetRes{}
+		for _, t := range v {
+			targets = append(targets, TargetRes{
+				Target: NodeRes{
+					Lat: t.TargetCoord.Lat,
+					Lon: t.TargetCoord.Lon,
+				},
+				Path: t.Path,
+				Dist: t.Dist,
+				ETA:  t.ETA,
+			},
+			)
+		}
+		results = append(results, SrcTargetPair{
+			Source: NodeRes{
+				Lat: k.Lat,
+				Lon: k.Lon,
+			},
+			Targets: targets,
+		})
+	}
+	return &ManyToManyQueryResponse{
+		Results: results,
+	}
 }
 
 type ErrResponse struct {

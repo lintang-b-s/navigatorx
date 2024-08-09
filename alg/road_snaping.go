@@ -3,6 +3,8 @@ package alg
 import (
 	"math"
 	"sort"
+
+	"github.com/dhconnelly/rtreego"
 )
 
 // urutin field struct descending by size , biar makin kecil heap size nya
@@ -180,11 +182,6 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 	return sts
 }
 
-
-// snappedNotIntersectionNodes := CHNode2{}
-// bestNotIntersection := 100000000.0
-// bestStreet := SurakartaWay{}
-
 // func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (states []State, err error) {
 // 	sts := []State{}
 
@@ -240,54 +237,62 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 // 	return sts, nil
 // }
 
-// func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNodeIdx int32, err error) {
-// 	wantToSnap := rtreego.Point{lat, lon}
-// 	stNeighbors := ch.Rtree.StRtree.NearestNeighbors(4, wantToSnap)
+func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNodeIdx int32, err error) {
+	wantToSnap := rtreego.Point{lat, lon}
+	stNeighbors := ch.Rtree.StRtree.NearestNeighbors(5, wantToSnap)
 
-// 	wantToSnapLoc := NewLocation(wantToSnap[0], wantToSnap[1])
+	wantToSnapLoc := NewLocation(wantToSnap[0], wantToSnap[1])
 
-// 	snappedStNode := int32(0)
-// 	best := 100000000.0
+	snappedStNode := int32(0)
+	best := 100000000.0
 
-// 	// snap point ke  node jalan terdekat/posisi location seharusnya
-// 	for _, st := range stNeighbors {
+	// snap point ke  node jalan terdekat/posisi location seharusnya
+	for _, st := range stNeighbors {
+		if len(st.(*StreetRect).Street.IntersectionNodesID) < 1 {
+			continue
+		}
 
-// 		street := st.(*StreetRect).Street
-// 		nearest := ch.ContractedNodes[street.NodesID[0]]
-// 		nearestStPoint := nearest       // node di jalan yg paling dekat dg gps
-// 		secondNearestStPoint := nearest // node di jalan yang paling dekat kedua dg gps
+		street := st.(*StreetRect).Street
 
-// 		// mencari 2 point dijalan yg paling dekat dg gps
-// 		streetNodes := []NodePoint{}
-// 		for _, nodeID := range street.NodesID {
-// 			nodeIdx := nodeID
-// 			node := ch.ContractedNodes[nodeIdx]
-// 			nodeLoc := NewLocation(node.Lat), node.Lon))
-// 			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), int32(nodeIdx)})
-// 		}
+		// mencari 2 point dijalan yg paling dekat dg gps
+		streetNodes := []NodePoint{}
+		for _, nodeID := range street.IntersectionNodesID {
+			nodeIdx := nodeID
+			node := ch.ContractedNodes[nodeIdx]
+			nodeLoc := NewLocation(node.Lat, node.Lon)
+			streetNodes = append(streetNodes, NodePoint{node, HaversineDistance(wantToSnapLoc, nodeLoc), int32(nodeIdx)})
+		}
 
-// 		sort.Slice(streetNodes, func(i, j int) bool {
-// 			return streetNodes[i].Dist < streetNodes[j].Dist
-// 		})
+		sort.Slice(streetNodes, func(i, j int) bool {
+			return streetNodes[i].Dist < streetNodes[j].Dist
+		})
 
-// 		nearestStPoint = streetNodes[0].Node
-// 		nearestStNodeIdx := streetNodes[0].Idx
-// 		secondNearestStPoint = streetNodes[1].Node
+		if len(street.IntersectionNodesID) >= 2 {
+			nearestStPoint := streetNodes[0].Node
+			nearestStNodeIdx := streetNodes[0].Idx
+			secondNearestStPoint := streetNodes[1].Node
 
-// 		// project point ke line segment jalan antara 2 point tadi
-// 		projection := ProjectPointToLineCoord(nearestStPoint, secondNearestStPoint, wantToSnap)
+			// project point ke line segment jalan antara 2 point tadi
+			projection := ProjectPointToLineCoord(nearestStPoint, secondNearestStPoint, wantToSnap)
 
-// 		projectionLoc := NewLocation(projection.Lat, projection.Lon)
+			projectionLoc := NewLocation(projection.Lat, projection.Lon)
+			// ambil streetNode yang jarak antara hasil projection dg lokasi gps  paling kecil
+			if HaversineDistance(wantToSnapLoc, projectionLoc) < best {
+				best = HaversineDistance(wantToSnapLoc, projectionLoc)
+				snappedStNode = nearestStNodeIdx
+			}
+		} else {
+			nearestStPoint := streetNodes[0].Node
+			nearestStPointLoc := NewLocation(nearestStPoint.Lat, nearestStPoint.Lon)
+			if HaversineDistance(wantToSnapLoc, nearestStPointLoc) < best {
+				best = HaversineDistance(wantToSnapLoc, nearestStPointLoc)
+				snappedStNode = nearestStPoint.IDx
+			}
+		}
+	}
 
-// 		// ambil streetNode yang jarak antara hasil projection dg lokasi gps  paling kecil
-// 		if HaversineDistance(wantToSnapLoc, projectionLoc) < best {
-// 			best = HaversineDistance(wantToSnapLoc, projectionLoc)
-// 			snappedStNode = nearestStNodeIdx
-// 		}
-// 	}
-
-// 	return snappedStNode, nil
-// }
+	return snappedStNode, nil
+}
 
 // for _, street := range nearestStreets {
 // 	if len(street.Street.Nodes) < 2 {
@@ -318,3 +323,7 @@ func (ch *ContractedGraph) SnapLocationToRoadNetworkNodeH3ForMapMatching(ways []
 // fmt.Println("best: ", snappedNotIntersectionNodes)
 // isNotIntersectionNodeInsideBestSt := ch.isPointInsideRoad(bestStreet, snappedNotIntersectionNodes)
 // fmt.Println(isNotIntersectionNodeInsideBestSt)
+
+// snappedNotIntersectionNodes := CHNode2{}
+// bestNotIntersection := 100000000.0
+// bestStreet := SurakartaWay{}

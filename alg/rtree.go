@@ -15,7 +15,7 @@ var tol = 0.0001
 type StreetRect struct {
 	Location rtreego.Point
 	Wormhole chan int
-	Street   *SurakartaWay
+	Street   SurakartaWay
 }
 
 func (s *StreetRect) Bounds() rtreego.Rect {
@@ -55,7 +55,7 @@ func BikinRtreeStreetNetwork(ways []SurakartaWay, ch *ContractedGraph, nodeIdxMa
 	for _, way := range ways {
 		rt.StRtree.Insert(&StreetRect{Location: rtreego.Point{way.CenterLoc[0], way.CenterLoc[1]},
 			Wormhole: nil,
-			Street:   &way})
+			Street:   way})
 		bar.Add(1)
 	}
 	fmt.Println("")

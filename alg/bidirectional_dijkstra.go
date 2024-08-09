@@ -211,7 +211,8 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 	if ch.ContractedNodes[v].TrafficLight {
 		eta += 2.0
 	}
-	for v != -1 {
+	ok := true
+	for ok && v != -1 {
 
 		if cameFromf[v].Edge.IsShortcut {
 
@@ -225,13 +226,15 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 			dist += cameFromf[v].Edge.Dist
 			fPath = append(fPath, ch.ContractedNodes[v])
 		}
+		_, ok = cameFromf[v]
 		v = cameFromf[v].NodeIDx
 
 	}
 
 	bPath := []CHNode2{}
 	v = commonVertex
-	for v != -1 {
+	ok = true 
+	for ok && v != -1 {
 
 		if cameFromb[v].Edge.IsShortcut {
 
@@ -246,8 +249,8 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 			dist += cameFromb[v].Edge.Dist
 			bPath = append(bPath, ch.ContractedNodes[v])
 		}
+		_, ok = cameFromb[v]
 		v = cameFromb[v].NodeIDx
-
 	}
 
 	fPath = reverseG(fPath)[:len(fPath)-1]

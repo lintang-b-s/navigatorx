@@ -4,9 +4,9 @@ type Item interface {
 	CHNode2 | CHNode | int32
 }
 type priorityQueueNode[T Item] struct {
-	rank   float64
-	index  int
-	item T
+	rank  float64
+	index int
+	item  T
 }
 
 type priorityQueue[T Item] []*priorityQueueNode[T]
@@ -40,3 +40,4 @@ func (pq *priorityQueue[Item]) Pop() interface{} {
 	*pq = old[0 : n-1]
 	return no
 }
+
