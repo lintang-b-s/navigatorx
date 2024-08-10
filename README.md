@@ -9,7 +9,7 @@
 2. taruh hasil download ke root project ini
 3. go run main.go
 (Minimal free ram 1 GB buat data diatas)
-4. tunggu sampai ada log "server started at :5000"
+4. tunggu sampai ada log "server started at :5000". Jika anda ingin query nya >10x lipat lebih cepat tunggu preprocessing Contraction Hierarchies nya selesai.
 5. request ke shortest path (source=surakarta , destination=pantai parangtritis)
 curl --location 'http://localhost:5000/api/navigations/shortestPath' \
 --header 'Content-Type: application/json' \
@@ -29,12 +29,18 @@ Note: Source  & Destination Coordinate harus tempat di sekitaran provinsi yogyak
 based on https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
 
 ```
-1.tunggu sampai ada log "server started at :5000"
+1.tunggu sampai ada log "server started at :5000". Jika anda ingin query nya >10x lipat lebih cepat tunggu preprocessing Contraction Hierarchies nya selesai.
 2. request ke server dg data rute list of coordinate (noisy, anggap data gps)
 curl --location 'http://localhost:5000/api/navigations/mapMatching' \
 --header 'Content-Type: application/json' -d @gps_hmm_map_matching.json
 
 3. copy polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. hasil map matching berupa list of road network node coordinate akan muncul di peta :)
+```
+
+### Traveling Salesman Problem Using Simulated Annealing
+
+```
+
 ```
 
 ### Many to Many Shortest Path Query
@@ -83,7 +89,7 @@ curl --location 'http://localhost:5000/api/navigations/manyToManyQuery' \
 ### Shortest Path with alternative street
 
 ```
-1. tunggu sampai ada log "server started at :5000"
+1. tunggu sampai ada log "server started at :5000". Jika anda ingin query nya >10x lipat lebih cepat tunggu preprocessing Contraction Hierarchies nya selesai.
 2. request query shortest path w/ alternative street
 curl --location 'http://localhost:5000/api/navigations/shortestPathAlternativeStreet' \
 --header 'Content-Type: application/json' \

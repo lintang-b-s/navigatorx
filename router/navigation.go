@@ -34,6 +34,8 @@ type NavigationService interface {
 
 	HiddenMarkovModelMapMatching(ctx context.Context, gps []alg.Coordinate) (string, []alg.CHNode2, error)
 	ManyToManyQuery(ctx context.Context, sourcesLat, sourcesLon, destsLat, destsLon []float64) map[alg.Coordinate][]service.TargetResult
+
+	TravelingSalesmanProblemSimulatedAnneal(ctx context.Context, citiesLat []float64, citiesLon []float64) ([]alg.Coordinate, string, float64, float64)
 }
 
 type NavigationHandler struct {
@@ -50,6 +52,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 			r.Post("/shortestPathCH", handler.shortestPathETACH)
 			r.Post("/mapMatching", handler.HiddenMarkovModelMapMatching)
 			r.Post("/manyToManyQuery", handler.ManyToManyQuery)
+			r.Post("/travelingSalesmanProblem", handler.TravelingSalesmanProblemSimulatedAnnealing)
 		})
 	})
 }
@@ -379,6 +382,65 @@ func RenderManyToManyQueryResponse(res map[alg.Coordinate][]service.TargetResult
 		Results: results,
 	}
 }
+
+type TravelingSalesmanProblemRequest struct {
+	CitiesCoord []Coord `json:"cities_coord" validate:"required,dive"`
+}
+
+func (s *TravelingSalesmanProblemRequest) Bind(r *http.Request) error {
+	if len(s.CitiesCoord) < 2 {
+		return errors.New("invalid request")
+	}
+	return nil
+}
+
+type TravelingSalesmanProblemResponse struct {
+	Path   string           `json:"path"`
+	Dist   float64          `json:"distance"`
+	ETA    float64          `json:"ETA"`
+	Cities []alg.Coordinate `json:"cities_order"`
+}
+
+func (h *NavigationHandler) TravelingSalesmanProblemSimulatedAnnealing(w http.ResponseWriter, r *http.Request) {
+	data := &TravelingSalesmanProblemRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	citiesLat, citiesLon := []float64{}, []float64{}
+	for _, c := range data.CitiesCoord {
+		citiesLat = append(citiesLat, c.Lat)
+		citiesLon = append(citiesLon, c.Lon)
+	}
+
+	tspTourNodes, path, dist, eta := h.svc.TravelingSalesmanProblemSimulatedAnneal(r.Context(), citiesLat, citiesLon)
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, RenderTravelingSalesmanProblemResponse(path, dist, eta, tspTourNodes))
+}
+
+func RenderTravelingSalesmanProblemResponse(path string, dist float64, eta float64, cities []alg.Coordinate) *TravelingSalesmanProblemResponse {
+	return &TravelingSalesmanProblemResponse{
+		Path:  path,
+		Dist:  dist,
+		ETA:   eta,
+		Cities: cities,
+	}
+}
+
+
 
 type ErrResponse struct {
 	Err            error `json:"-"` // low-level runtime error

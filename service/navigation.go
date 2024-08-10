@@ -16,6 +16,7 @@ type ContractedGraph interface {
 	SnapLocationToRoadNetworkNodeRtree(lat, lon float64) (snappedRoadNodeIdx int32, err error)
 	ShortestPathManyToManyBiDijkstra(from int32, to []int32) ([][]alg.CHNode2, []float64, []float64)
 	ShortestPathManyToManyBiDijkstraWorkers(from []int32, to []int32) map[int32]map[int32]alg.SPSingleResultResult
+	TravelingSalesmanProblemSimulatedAnnealing(cities []int32) ([]alg.CHNode2, float64, float64, [][]float64)
 	IsChReady() bool
 }
 
@@ -250,7 +251,7 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	if !paths[0].IsCH {
 		paths[0].Paths = paths[0].Paths[:len(paths[0].Paths)-1] // exclude start node dari paths[1]
 		concatedPaths = append(concatedPaths, paths[0].Paths...)
-	concatedPaths = append(concatedPaths, paths[1].Paths...)
+		concatedPaths = append(concatedPaths, paths[1].Paths...)
 	} else {
 		paths[0].PathsCH = paths[0].PathsCH[:len(paths[0].PathsCH)-1] // exclude start node dari paths[1]
 		concatedPathsCH = append(concatedPathsCH, paths[0].PathsCH...)
@@ -410,6 +411,25 @@ func (uc *NavigationService) ManyToManyQuery(ctx context.Context, sourcesLat, so
 
 	}
 	return manyToManyRes
+}
+
+func (uc *NavigationService) TravelingSalesmanProblemSimulatedAnneal(ctx context.Context, citiesLat []float64, citiesLon []float64) ([]alg.Coordinate, string, float64, float64) {
+
+	citiesID := []int32{}
+	for i := 0; i < len(citiesLat); i++ {
+		cityNode, _ := uc.SnapLocToStreetNode(citiesLat[i], citiesLon[i])
+		citiesID = append(citiesID, cityNode)
+	}
+
+	tspTourNodes, bestETA, bestDistance, bestTourCitiesOrder := uc.CH.TravelingSalesmanProblemSimulatedAnnealing(citiesID)
+	cititesTour := []alg.Coordinate{}
+	for i := 0; i < len(bestTourCitiesOrder); i++ {
+		cititesTour = append(cititesTour, alg.Coordinate{
+			Lat: bestTourCitiesOrder[i][0],
+			Lon: bestTourCitiesOrder[i][1],
+		})
+	}
+	return cititesTour, alg.RenderPath2(tspTourNodes), bestETA, bestDistance
 }
 
 func (uc *NavigationService) NearestStreetNodesForMapMatching(lat, lon float64) ([]alg.State, error) {
