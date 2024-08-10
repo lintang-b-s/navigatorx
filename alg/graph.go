@@ -21,6 +21,7 @@ type Node struct {
 	UsedInRoad   int
 }
 
+
 func RenderPath2(path []CHNode2) string {
 	s := ""
 	coords := make([][]float64, 0)

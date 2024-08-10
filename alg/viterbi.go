@@ -1,6 +1,9 @@
 package alg
 
-import "math"
+import (
+	"lintang/navigatorx/util"
+	"math"
+)
 
 type Viterbi struct {
 	Obs            []ViterbiNode
@@ -93,12 +96,5 @@ func (v *Viterbi) RunViterbi() (float64, []ViterbiNode) {
 	}
 	path = append(path, state)
 
-	return prob, reverseG(path)
-}
-
-func reverseG[T any](arr []T) (result []T) {
-	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {
-		arr[i], arr[j] = arr[j], arr[i]
-	}
-	return arr
+	return prob, util.ReverseG(path)
 }

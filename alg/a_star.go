@@ -2,11 +2,10 @@ package alg
 
 import (
 	"container/heap"
+	"lintang/navigatorx/util"
 
 	"github.com/twpayne/go-polyline"
 )
-
-
 
 type nodeMapCH map[int32]*priorityQueueNode[CHNode]
 
@@ -51,13 +50,13 @@ func (ch *ContractedGraph) AStarCH(from, to int32) (pathN []CHNode, path string,
 			curr := current
 			for curr.rank != 0 {
 				if curr.item.TrafficLight {
-					etaTraffic += 2.0
+					etaTraffic += 3.0
 				}
 				path = append(path, curr.item)
 				curr = nm.getCH(ch.AStarGraph[cameFrom[curr.item.IDx].IDx])
 			}
 			path = append(path, ch.AStarGraph[from])
-			path = reverseG(path)
+			path = util.ReverseG(path)
 			coords := make([][]float64, 0)
 
 			pathN := []CHNode{}

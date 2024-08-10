@@ -1,4 +1,4 @@
-package domain
+package types
 
 import (
 	"errors"
@@ -13,7 +13,6 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e.orig != nil {
-		// return fmt.Sprintf("%s: %v", e.msg, e.orig)
 		return fmt.Sprintf("%s", e.msg)
 	}
 

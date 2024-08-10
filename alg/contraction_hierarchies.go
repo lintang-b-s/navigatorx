@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"errors"
 	"fmt"
+	"lintang/navigatorx/util"
 	"runtime"
 	"time"
 
@@ -76,7 +77,7 @@ type ContractedGraph struct {
 	ContractedNodes        []CHNode2
 
 	NodeMapIdx map[int64]int32
-	KVdb 	 *KVDB
+	KVdb       *KVDB
 
 	CompressedCHGraph    []byte
 	CompressedAstarGraph []byte
@@ -487,7 +488,7 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 			}
 
 		}
-		ind = reverseG(ind)
+		ind = util.ReverseG(ind)
 		for _, edgeIDx := range ind {
 			quickDelete(edgeIDx, &ch.ContractedFirstOutEdge[nd], "f")
 			ch.Metadata.degrees[nd]--
@@ -508,7 +509,7 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 			}
 
 		}
-		ind = reverseG(ind)
+		ind = util.ReverseG(ind)
 		for _, edgeIDx := range ind {
 			quickDelete(edgeIDx, &ch.ContractedFirstInEdge[nd], "b")
 			ch.Metadata.degrees[nd]--

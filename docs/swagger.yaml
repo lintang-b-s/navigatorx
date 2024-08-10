@@ -1,0 +1,432 @@
+basePath: /api
+definitions:
+  alg.Coordinate:
+    properties:
+      lat:
+        type: number
+      lon:
+        type: number
+    type: object
+  alg.Navigation:
+    properties:
+      distance_before_turn:
+        type: number
+      instruction:
+        type: string
+      street_name:
+        type: string
+      turn:
+        $ref: '#/definitions/alg.TURN'
+      turn_eta:
+        type: number
+    type: object
+  alg.TURN:
+    enum:
+    - KIRI
+    - KANAN
+    - LURUS
+    type: string
+    x-enum-varnames:
+    - KIRI
+    - KANAN
+    - LURUS
+  router.Coord:
+    description: model untuk koordinat
+    properties:
+      lat:
+        type: number
+      lon:
+        type: number
+    required:
+    - lat
+    - lon
+    type: object
+  router.ErrResponse:
+    description: model untuk error response
+    properties:
+      code:
+        description: application-specific error code
+        type: integer
+      error:
+        description: application-level error message, for debugging
+        type: string
+      status:
+        description: user-level status message
+        type: string
+      validation:
+        items:
+          type: string
+        type: array
+    type: object
+  router.ManyToManyQueryRequest:
+    description: response body untuk query shortest path many to many
+    properties:
+      sources:
+        items:
+          $ref: '#/definitions/router.Coord'
+        type: array
+      targets:
+        items:
+          $ref: '#/definitions/router.Coord'
+        type: array
+    required:
+    - sources
+    - targets
+    type: object
+  router.ManyToManyQueryResponse:
+    description: response body untuk query shortest path many to many
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/router.SrcTargetPair'
+        type: array
+    type: object
+  router.MapMatchingRequest:
+    description: request body untuk map matching pakai hidden markov model
+    properties:
+      coordinates:
+        items:
+          $ref: '#/definitions/router.Coord'
+        type: array
+    required:
+    - coordinates
+    type: object
+  router.MapMatchingResponse:
+    description: response body untuk map matching pakai hidden markov model
+    properties:
+      coordinates:
+        items:
+          $ref: '#/definitions/router.Coord'
+        type: array
+      path:
+        type: string
+    type: object
+  router.NodeRes:
+    description: model untuk node coordinate
+    properties:
+      lat:
+        type: number
+      lon:
+        type: number
+    type: object
+  router.ShortestPathResponse:
+    description: response body untuk shortest path query antara 2 tempat di openstreetmap
+    properties:
+      ETA:
+        type: number
+      algorithm:
+        type: string
+      distance:
+        type: number
+      found:
+        type: boolean
+      navigations:
+        items:
+          $ref: '#/definitions/alg.Navigation'
+        type: array
+      path:
+        type: string
+      route:
+        items:
+          $ref: '#/definitions/alg.Coordinate'
+        type: array
+    type: object
+  router.SortestPathAlternativeStreetRequest:
+    description: request body untuk shortest path query antara banyak source dan banyak
+      destination di openstreetmap
+    properties:
+      dst_lat:
+        type: number
+      dst_lon:
+        type: number
+      src_lat:
+        type: number
+      src_lon:
+        type: number
+      street_alternative_lat:
+        type: number
+      street_alternative_lon:
+        type: number
+    required:
+    - dst_lat
+    - dst_lon
+    - src_lat
+    - src_lon
+    - street_alternative_lat
+    - street_alternative_lon
+    type: object
+  router.SortestPathRequest:
+    description: request body untuk shortest path query antara 2 tempat di openstreetmap
+    properties:
+      dst_lat:
+        type: number
+      dst_lon:
+        type: number
+      src_lat:
+        type: number
+      src_lon:
+        type: number
+    required:
+    - dst_lat
+    - dst_lon
+    - src_lat
+    - src_lon
+    type: object
+  router.SrcTargetPair:
+    description: model untuk mapping source dan target di query shortest path many
+      to many
+    properties:
+      source:
+        $ref: '#/definitions/router.NodeRes'
+      targets:
+        items:
+          $ref: '#/definitions/router.TargetRes'
+        type: array
+    type: object
+  router.TargetRes:
+    description: model untuk destinations di query shortest path many to many
+    properties:
+      ETA:
+        type: number
+      distance:
+        type: number
+      path:
+        type: string
+      target:
+        $ref: '#/definitions/router.NodeRes'
+    type: object
+  router.TravelingSalesmanProblemRequest:
+    description: request body untuk traveling salesman problem query
+    properties:
+      cities_coord:
+        items:
+          $ref: '#/definitions/router.Coord'
+        type: array
+    required:
+    - cities_coord
+    type: object
+  router.TravelingSalesmanProblemResponse:
+    description: response body untuk traveling salesman problem query
+    properties:
+      ETA:
+        type: number
+      cities_order:
+        items:
+          $ref: '#/definitions/alg.Coordinate'
+        type: array
+      distance:
+        type: number
+      path:
+        type: string
+    type: object
+host: localhost:5000
+info:
+  contact:
+    name: lintang birda saputra
+  description: simple openstreetmap routing engine in go. Using Contraction Hierarchies
+    for preprocessing and Bidirectioanl Dijkstra for shortest path query
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: navigatorx lintangbs API
+  version: "1.0"
+paths:
+  /navigations/many-to-many:
+    post:
+      consumes:
+      - application/json
+      description: many to many query shortest path . punya banyak source dan banyak
+        destination buat querynya
+      parameters:
+      - description: request body query shortest path many to many
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/router.ManyToManyQueryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/router.ManyToManyQueryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+      summary: many to many query shortest path . punya banyak source dan banyak destination
+        buat querynya. Mencari shortesth path ke setiap destination untuk setiap source
+      tags:
+      - navigations
+  /navigations/map-matching:
+    post:
+      consumes:
+      - application/json
+      description: map matching pakai hidden markov model. Snapping noisy GPS coordinates
+        ke road network lokasi asal gps seharusnya
+      parameters:
+      - description: request body hidden markov model map matching
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/router.MapMatchingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/router.MapMatchingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+      summary: map matching pakai hidden markov model. Snapping noisy GPS coordinates
+        ke road network lokasi asal gps seharusnya
+      tags:
+      - navigations
+  /navigations/shortest-path:
+    post:
+      consumes:
+      - application/json
+      description: shortest path query antara 2 tempat di openstreetmap. Hanya 1 source
+        dan 1 destination
+      parameters:
+      - description: request body query shortest path antara 2 tempat
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/router.SortestPathRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/router.ShortestPathResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+      summary: shortest path query antara 2 tempat di openstreetmap.
+      tags:
+      - navigations
+  /navigations/shortest-path-alternative-street:
+    post:
+      consumes:
+      - application/json
+      description: shortest path query antara 2 tempat di openstreetmap dengan menentukan
+        alternative street untuk rutenya.. Hanya 1 source dan 1 destination
+      parameters:
+      - description: request body query shortest path antara 2 tempat
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/router.SortestPathAlternativeStreetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/router.ShortestPathResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+      summary: shortest path query antara 2 tempat di openstreetmap dengan menentukan
+        alternative street untuk rutenya.
+      tags:
+      - navigations
+  /navigations/shortest-path-ch:
+    post:
+      consumes:
+      - application/json
+      description: shortest path query antara 2 tempat di openstreetmap  pake bidirectional
+        dijkstra only, sebenarnya di endpoint shortest-path juga pake bidirectional
+        dijkstra. jika preprocessing contraction hierarchiesnya selesai. Hanya 1 source
+        dan 1 destination
+      parameters:
+      - description: request body query shortest path antara 2 tempat
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/router.SortestPathRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/router.ShortestPathResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+      summary: shortest path query antara 2 tempat di openstreetmap  pake bidirectional
+        dijkstra only, sebenarnya di endpoint shortest-path juga pake bidirectional
+        dijkstra. jika preprocessing contraction hierarchiesnya selesai
+      tags:
+      - navigations
+  /navigations/tsp:
+    post:
+      consumes:
+      - application/json
+      description: query traveling salesman problem pakai simulated annealing. Shortest
+        path untuk rute mengunjungi beberapa tempat tepat sekali dan kembali ke tempat
+        asal
+      parameters:
+      - description: request body query tsp
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/router.TravelingSalesmanProblemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/router.TravelingSalesmanProblemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/router.ErrResponse'
+      summary: query traveling salesman problem pakai simulated annealing. Shortest
+        path untuk rute mengunjungi beberapa tempat tepat sekali dan kembali ke tempat
+        asal
+      tags:
+      - navigations
+schemes:
+- http
+swagger: "2.0"

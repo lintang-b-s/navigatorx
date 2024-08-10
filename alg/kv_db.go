@@ -105,9 +105,8 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 	home := h3.NewLatLng(lat, lon)
 	cell := h3.LatLngToCell(home, 9)
 	val, closer, err := k.db.Get([]byte(cell.String()))
-	defer closer.Close()
-	if err != nil {
-		return []SurakartaWay{}, err
+	if err == nil {
+		defer closer.Close()
 	}
 	streets, err := LoadWay(val)
 	ways = append(ways, streets...)
@@ -118,12 +117,8 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 			continue
 		}
 		val, closer, err := k.db.Get([]byte(currCell.String()))
-		if closer == nil {
+		if closer == nil || err != nil {
 			continue
-		}
-
-		if err != nil {
-			return []SurakartaWay{}, err
 		}
 
 		streets, err := LoadWay(val)
@@ -132,6 +127,9 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 		}
 		ways = append(ways, streets...)
 		closer.Close()
+	}
+	if len(ways) == 0 {
+		return []SurakartaWay{}, fmt.Errorf("tidak ada jalan di sekitar lokasi")
 	}
 
 	return ways, err

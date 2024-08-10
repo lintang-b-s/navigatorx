@@ -3,6 +3,7 @@ package alg
 import (
 	"container/heap"
 	"fmt"
+	"lintang/navigatorx/util"
 	"math"
 )
 
@@ -118,7 +119,7 @@ func (ch *ContractedGraph) ShortestPathManyToManyBiDijkstra(from int32, to []int
 
 	}
 
-	selectList = reverseG(selectList)
+	selectList = util.ReverseG(selectList)
 
 	frontier := forwQ
 	for {
@@ -197,7 +198,7 @@ func (ch *ContractedGraph) ShortestPathManyToManyBiDijkstra(from int32, to []int
 			} else {
 				_, ok = cameFromf[t]
 				if ok && cameFromf[t].NodeIDx != -1 && ch.ContractedNodes[cameFromf[t].NodeIDx].TrafficLight {
-					targetEta[i] += 2.0
+					targetEta[i] += 3.0
 				}
 				targetPath[i] = append(targetPath[i], ch.ContractedNodes[t])
 

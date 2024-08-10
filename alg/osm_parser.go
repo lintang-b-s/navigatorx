@@ -22,8 +22,8 @@ type nodeMapContainer struct {
 	mu      sync.Mutex
 }
 
-func BikinGraphFromOpenstreetmap() ([]SurakartaWay, *ContractedGraph, map[int64]int32, []SurakartaWay) {
-	f, err := os.Open("./solo_jogja.osm.pbf")
+func BikinGraphFromOpenstreetmap(mapFile string) ([]SurakartaWay, *ContractedGraph, map[int64]int32, []SurakartaWay) {
+	f, err := os.Open(mapFile)
 
 	if err != nil {
 		panic(err)

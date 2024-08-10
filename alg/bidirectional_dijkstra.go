@@ -3,6 +3,7 @@ package alg
 import (
 	"container/heap"
 	"fmt"
+	"lintang/navigatorx/util"
 	"math"
 )
 
@@ -209,7 +210,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 	dist := 0.0
 	v := commonVertex
 	if ch.ContractedNodes[v].TrafficLight {
-		eta += 2.0
+		eta += 3.0
 	}
 	ok := true
 	for ok && v != -1 {
@@ -220,7 +221,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 		} else {
 
 			if cameFromf[v].NodeIDx != -1 && ch.ContractedNodes[cameFromf[v].NodeIDx].TrafficLight {
-				eta += 2.0
+				eta += 3.0
 			}
 			eta += cameFromf[v].Edge.Weight
 			dist += cameFromf[v].Edge.Dist
@@ -233,7 +234,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 
 	bPath := []CHNode2{}
 	v = commonVertex
-	ok = true 
+	ok = true
 	for ok && v != -1 {
 
 		if cameFromb[v].Edge.IsShortcut {
@@ -243,7 +244,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 		} else {
 
 			if cameFromb[v].NodeIDx != -1 && ch.ContractedNodes[cameFromb[v].NodeIDx].TrafficLight {
-				eta += 2.0
+				eta += 3.0
 			}
 			eta += cameFromb[v].Edge.Weight
 			dist += cameFromb[v].Edge.Dist
@@ -253,7 +254,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 		v = cameFromb[v].NodeIDx
 	}
 
-	fPath = reverseG(fPath)[:len(fPath)-1]
+	fPath = util.ReverseG(fPath)[:len(fPath)-1]
 	path := []CHNode2{}
 	path = append(path, fPath...)
 	path = append(path, bPath...)
@@ -273,7 +274,7 @@ func (ch *ContractedGraph) createPath(commonVertex int32, from, to int32,
 func (ch *ContractedGraph) unpackBackward(edge EdgeCH, path *[]CHNode2, eta *float64, dist *float64) {
 	if !edge.IsShortcut {
 		if ch.ContractedNodes[edge.ToNodeIDX].TrafficLight {
-			*eta += 2.0
+			*eta += 3.0
 		}
 		*eta += edge.Weight
 		*dist += edge.Dist
@@ -288,7 +289,7 @@ func (ch *ContractedGraph) unpackBackward(edge EdgeCH, path *[]CHNode2, eta *flo
 func (ch *ContractedGraph) unpackForward(edge EdgeCH, path *[]CHNode2, eta *float64, dist *float64) {
 	if !edge.IsShortcut {
 		if ch.ContractedNodes[edge.ToNodeIDX].TrafficLight {
-			*eta += 2.0
+			*eta += 3.0
 		}
 		*eta += edge.Weight
 		*dist += edge.Dist

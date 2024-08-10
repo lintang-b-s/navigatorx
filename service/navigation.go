@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"lintang/navigatorx/alg"
-	"lintang/navigatorx/domain"
+	"lintang/navigatorx/types"
 	"sync"
 )
 
@@ -76,7 +76,7 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	}
 
 	if !found {
-		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, domain.WrapErrorf(err, domain.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
+		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, types.WrapErrorf(err, types.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
 	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
 
@@ -264,21 +264,25 @@ func (uc *NavigationService) ShortestPathAlternativeStreetETA(ctx context.Contex
 	isCH := paths[0].IsCH
 	// eta satuannya minute
 	if !found {
-		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, domain.WrapErrorf(err, domain.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
+		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, types.WrapErrorf(err, types.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
 	}
 	var route []alg.Coordinate = make([]alg.Coordinate, 0)
+
+	navPaths := ""
 
 	var n = []alg.Navigation{}
 	if !isCH {
 		n, err = alg.CreateTurnByTurnNavigation(concatedPaths)
+		navPaths = alg.RenderPath(concatedPaths)
 	} else {
 		n, err = alg.CreateTurnByTurnNavigationCH(concatedPathsCH)
+		navPaths = alg.RenderPath2(concatedPathsCH)
 	}
 	if err != nil {
 		return alg.RenderPath(concatedPaths), dist, n, found, route, eta, isCH, nil
 	}
 
-	return alg.RenderPath(concatedPaths), dist, n, found, route, eta, isCH, nil
+	return navPaths, dist, n, found, route, eta, isCH, nil
 }
 
 func (uc *NavigationService) ShortestPathETACH(ctx context.Context, srcLat, srcLon float64,

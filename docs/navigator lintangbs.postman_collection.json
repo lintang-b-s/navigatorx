@@ -1,0 +1,245 @@
+{
+	"info": {
+		"_postman_id": "129c6f33-7fe7-4ce9-9c2f-f4e349939876",
+		"name": "navigator lintangbs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30538133",
+		"_collection_link": "https://orange-comet-51695.postman.co/workspace/netflik~35c0e208-27dd-4c2a-a67f-44e4ee221c8b/collection/30538133-129c6f33-7fe7-4ce9-9c2f-f4e349939876?action=share&source=collection_link&creator=30538133"
+	},
+	"item": [
+		{
+			"name": "traveling salesman problem simulated annealing",
+			"item": [
+				{
+					"name": "TSP SA",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"cities_coord\": [\n        {\n            \"lat\": -7.773700556142326, \n            \"lon\": 110.37927594982729\n        },\n        {\n            \"lat\": -7.687798280189743,\n            \"lon\": 110.41397147030537\n        },\n        {\n            \"lat\": -7.773714842796234, \n            \"lon\": 110.38625612460329\n        },\n        {\n            \"lat\": -7.7620859704046135, \n            \"lon\": 110.40928883503045\n        },\n        {\n            \"lat\": -7.559256385020671,\n            \"lon\":  110.85624887436603\n        },\n        {\n            \"lat\": -7.558529640984029,\n            \"lon\": 110.73442218529993\n        },\n        {\n            \"lat\": -7.5579561088085665,\n            \"lon\":  110.85233572375333\n        },\n        {\n            \"lat\":  -7.557649260722883, \n            \"lon\": 110.77068956586514\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/navigations/tsp",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"navigations",
+								"tsp"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "shortestPath",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"src_lat\": -7.550261232598317,\n    \"src_lon\":    110.78210790296636,\n    \"dst_lat\": -8.024431446370416,\n    \"dst_lon\":   110.32971396395838\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/navigations/shortest-path",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"navigations",
+						"shortest-path"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "many to many shortest path",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"sources\": [{\n        \"lat\": -7.550248257898637, \n        \"lon\": 110.78217903249168\n    },\n    {\n        \"lat\": -7.560347382387681, \n        \"lon\": 110.78879587509478\n    },\n    {\n        \"lat\": -7.5623445763181945,\n        \"lon\": 110.81010426983109\n    }\n    ],\n    \"targets\": [{\n        \"lat\": -7.553672205152498, \n        \"lon\": 110.79784256968716\n    },\n    {\n        \"lat\": -7.564559782091322,\n        \"lon\":  110.80455609811008\n    },\n    {\n        \"lat\": -7.570135257838102, \n        \"lon\": 110.82292649269334\n    },\n    {\n        \"lat\": -7.598393719179397,\n        \"lon\": 110.81555588473815\n    }\n   \n\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/navigations/many-to-many",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"navigations",
+						"many-to-many"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "shortestPath Copy",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sources\": [{\n        \"lat\": -7.550248257898637, \n        \"lon\": 110.78217903249168\n    },\n    {\n        \"lat\": -7.560347382387681, \n        \"lon\": 110.78879587509478\n    },\n    {\n        \"lat\": -7.5623445763181945,\n        \"lon\": 110.81010426983109\n    }\n    ],\n    \"targets\": [{\n        \"lat\": -7.553672205152498, \n        \"lon\": 110.79784256968716\n    },\n    {\n        \"lat\": -7.564559782091322,\n        \"lon\":  110.80455609811008\n    },\n    {\n        \"lat\": -7.570135257838102, \n        \"lon\": 110.82292649269334\n    },\n    {\n        \"lat\": -7.598393719179397,\n        \"lon\": 110.81555588473815\n    }\n   \n\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/navigations/manyToManyQuery",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"navigations",
+								"manyToManyQuery"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Date",
+							"value": "Fri, 09 Aug 2024 01:47:38 GMT"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"results\": [\n        {\n            \"source\": {\n                \"lat\": -7.560347382387681,\n                \"lon\": 110.78879587509478\n            },\n            \"targets\": [\n                {\n                    \"target\": {\n                        \"lat\": -7.553672205152498,\n                        \"lon\": 110.79784256968716\n                    },\n                    \"path\": \"pebm@}_gcTNi@H]`DeKbGnGbAdAvGfI`AdBvEnInKtRHRDJDHc@jBc@tBm@tCENeArEERyAjHHDf@uBx@_E~@eEDWDQ\",\n                    \"distance\": 1138.8695781679583,\n                    \"ETA\": 0.8175581528933468\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.564559782091322,\n                        \"lon\": 110.80455609811008\n                    },\n                    \"path\": \"|odm@uqhcTgAnFU~@e@bCETOx@gAxFe@jC_AlEaPpv@mEbSyAjHHDf@uBx@_E~@eEDWDQ\",\n                    \"distance\": 804.1233117673827,\n                    \"ETA\": 0.6245529724017267\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.570135257838102,\n                        \"lon\": 110.82292649269334\n                    },\n                    \"path\": \"prem@gblcT{@fEy@jEUbAWjAoA|FaB~HeCxLgAfFuCzM]`Bi@dCa@vBqAjGwCfNYrAk@hCqc@xvBHDf@uBx@_E~@eEDWDQ\",\n                    \"distance\": 1286.822584650864,\n                    \"ETA\": 5.012939758654841\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.598393719179397,\n                        \"lon\": 110.81555588473815\n                    },\n                    \"path\": \"|_km@gpjcTIAg@K]IQEaDs@{IkB_AS_H{AcEaA{@Sa@KMGKCiB_@qDU}AQsLqE_DcAcBk@_GiBgHaBoBe@kEiAuEaAcDs@wD}@WG{@S_AUaAUQEqP}DsBg@}A_@_AYiA[u@UuDcA}Ac@yDcAWDWtAa@hBUhAEP{@fEy@jEUbAWjAoA|FaB~HeCxLgAfFuCzM]`Bi@dCa@vBqAjGwCfNYrAk@hCqc@xvBHDf@uBx@_E~@eEDWDQ\",\n                    \"distance\": 3277.0282278988298,\n                    \"ETA\": 6.605104273253214\n                }\n            ]\n        },\n        {\n            \"source\": {\n                \"lat\": -7.5623445763181945,\n                \"lon\": 110.81010426983109\n            },\n            \"targets\": [\n                {\n                    \"target\": {\n                        \"lat\": -7.553672205152498,\n                        \"lon\": 110.79784256968716\n                    },\n                    \"path\": \"pebm@}_gcTNi@H]La@^mATw@|A}ERQCOnB_HbEuKDGDAnDoHn@mATa@nA{BXi@Ve@t@uA@G??`EsFvLlBXPdF`AxCj@hB\\\\rCXgEu@iE{@gFcAwBg@TaALo@Tw@Ja@bAiDT}@H[TaAj@mB\",\n                    \"distance\": 1859.0513996292323,\n                    \"ETA\": 1.768182933710095\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.564559782091322,\n                        \"lon\": 110.80455609811008\n                    },\n                    \"path\": \"|odm@uqhcTj@iCXsA}XgFwBg@TaALo@Tw@Ja@bAiDT}@H[TaAj@mB\",\n                    \"distance\": 549.4666487523655,\n                    \"ETA\": 0.5866843189991298\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.570135257838102,\n                        \"lon\": 110.82292649269334\n                    },\n                    \"path\": \"prem@gblcT{@fEy@jEUbAWjAS`A{@zDaB~Hy@`ECH_@jBg@`CMh@Or@i@hCuCzMwOlCcNg@a@|A\",\n                    \"distance\": 903.0998092403894,\n                    \"ETA\": 2.7871591116657535\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.598393719179397,\n                        \"lon\": 110.81555588473815\n                    },\n                    \"path\": \"|_km@gpjcTIAg@K]IQEaDs@{IkB{S}EiB_@oGg@KEqAc@wAk@m@UWMwDwAcOyEuA[qEeAoBe@kEiA}A[wBe@cDs@c@KsCq@WG{@S_AUaAUQEeBa@{Cs@qBg@}D_AgQwEoHaBqCbNy@jEUbAWjAS`A{@zDaB~Hy@`ECH_@jBg@`CMh@Or@i@hCuCzMwOlCcNg@a@|A\",\n                    \"distance\": 2845.4870047946806,\n                    \"ETA\": 4.341068868109186\n                }\n            ]\n        },\n        {\n            \"source\": {\n                \"lat\": -7.550248257898637,\n                \"lon\": 110.78217903249168\n            },\n            \"targets\": [\n                {\n                    \"target\": {\n                        \"lat\": -7.553672205152498,\n                        \"lon\": 110.79784256968716\n                    },\n                    \"path\": \"pebm@}_gcTMGSx@qBvIe@rBoC|Lq@rCAF]|Ao@rC{BrJk@fCI\\\\_@bBK`@Kf@]~AYjACNS~@Ml@ERGXK`@Kd@ELMl@Mj@kAxFD\\\\fErAbEn@Nw@{@Y\",\n                    \"distance\": 1127.7062346635166,\n                    \"ETA\": 0.9695106412398823\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.564559782091322,\n                        \"lon\": 110.80455609811008\n                    },\n                    \"path\": \"|odm@uqhcTj@iCXsAIAyDo@yRuD]AA?uLmBaErF_@f@uKbTEFmElKyBdHKTcAnDWt@}AlFSx@qBvIe@rBoC|Lq@rCAF]|Ao@rC{BrJk@fCI\\\\_@bBK`@Kf@]~AYjACNS~@Ml@ERGXK`@Kd@ELMl@Mj@kAxFD\\\\fErAbEn@Nw@{@Y\",\n                    \"distance\": 2445.663502298336,\n                    \"ETA\": 4.126315740497439\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.570135257838102,\n                        \"lon\": 110.82292649269334\n                    },\n                    \"path\": \"prem@gblcTGVKj@g@bCwDxQ{@jEe@rB??eCxLMh@y@|DeAdFQp@I`@s@`D]`Bi@dCkGjZIAyDo@yRuD]AA?uLmBaErF_@f@uKbTEFmElKyBdHKTcAnDWt@}AlFSx@qBvIe@rBoC|Lq@rCAF]|Ao@rC{BrJk@fCI\\\\_@bBK`@Kf@]~AYjACNS~@Ml@ERGXK`@Kd@ELMl@Mj@kAxFD\\\\fErAbEn@Nw@{@Y\",\n                    \"distance\": 3152.1817158752087,\n                    \"ETA\": 4.69153031135894\n                },\n                {\n                    \"target\": {\n                        \"lat\": -7.598393719179397,\n                        \"lon\": 110.81555588473815\n                    },\n                    \"path\": \"|_km@gpjcTaB]aDs@{IkB_AS_H{AcEaA{@Sa@KMGKCiB_@qDU}AQsLqE_DcAcBk@_GiBgHaBoBe@kEiAuEaAcDs@wD}@WG{@S_AUaAUQEqP}DsBg@}A_@_EkAyAa@{Aa@}Ac@cAWmCe@WtAa@hBKb@Id@EPGVKj@g@bCwDxQ{@jEe@rB??eCxLMh@y@|DeAdFQp@I`@s@`D]`Bi@dCkGjZIAyDo@yRuD]AA?uLmBaErF_@f@uKbTEFmElKyBdHKTcAnDWt@}AlFSx@qBvIe@rBoC|Lq@rCAF]|Ao@rC{BrJk@fCI\\\\_@bBK`@Kf@]~AYjACNS~@Ml@ERGXK`@Kd@ELMl@Mj@kAxFD\\\\fErAbEn@Nw@{@Y\",\n                    \"distance\": 5148.670524549516,\n                    \"ETA\": 6.288721358298382\n                }\n            ]\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "shortestPath manahan solo square",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"src_lat\":  -7.550201780220693,\n    \"src_lon\":     110.78213555907118, \n    \"dst_lat\":  -7.576709502070188, \n    \"dst_lon\":  110.8174747980217\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/navigations/shortest-path",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"navigations",
+						"shortest-path"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "shortestPath grya alfaraz-pakuwon Copy",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"src_lat\": -7.550261232598317,\n    \"src_lon\":    110.78210790296636, \n    \"street_alternative_lat\": -7.8409667827395815, \n    \"street_alternative_lon\":   110.3472473375829,\n      \"dst_lat\": -8.024431446370416,\n    \"dst_lon\":   110.32971396395838\n}\n\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/navigations/shortest-path-alternative-street",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"navigations",
+						"shortest-path-alternative-street"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "map matching",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"coordinates\": [\n    {\n        \"lat\": -7.756371574635727, \n        \"lon\": 110.37651531978914\n     },\n     {\n        \"lat\": -7.7562506506700855, \n        \"lon\": 110.37643619462166\n     },\n   \n     {\n        \"lat\": -7.75612175365862, \n        \"lon\": 110.37637718602338\n     },\n      {\n        \"lat\": -7.755983554756171, \n        \"lon\": 110.37631013079769\n     },\n     {\n        \"lat\":-7.755886549730753, \n        \"lon\": 110.37629001422972\n     },\n     {\n        \"lat\":-7.755937045499836,\n        \"lon\":  110.37621625348365\n     },\n\n\n      {\n        \"lat\": -7.756020762156739,\n        \"lon\":   110.37589841171655\n     },\n\n     {\n        \"lat\":  -7.756068600238656,\n        \"lon\":   110.37574418469902\n     },\n\n     {\n        \"lat\":  -7.756063284896385,\n        \"lon\":   110.37560873314162\n     },\n\n\n\n {\n        \"lat\": -7.756148330363653,\n        \"lon\":  110.37536733432921\n     },\n\n\n    {\n        \"lat\": -7.756180222409927, \n        \"lon\": 110.37509777232637\n     },\n\n      {\n        \"lat\": -7.756206339089811,\n        \"lon\":  110.37482030771328\n     },\n      {\n        \"lat\":-7.7562217581931385,\n        \"lon\":  110.37452622924253\n     },\n      {\n        \"lat\": -7.756373063549109, \n        \"lon\":  110.37398938349028\n     }\n    ,\n     {\n        \"lat\": -7.7564230850143225, \n        \"lon\": 110.37366791739686\n     },\n       {\n        \"lat\": -7.756476238388932,\n        \"lon\":  110.37337354495992\n     }\n    ,\n     {\n        \"lat\": -7.756504143907308, \n        \"lon\":  110.37323339954094\n     }\n    ,\n     {\n        \"lat\":-7.756646505105399, \n        \"lon\":  110.37231802747259\n     },\n      {\n        \"lat\":-7.756725576389485, \n        \"lon\": 110.37220658119043\n     },\n       {\n        \"lat\":-7.756934411423718, \n        \"lon\": 110.37200974361554\n     },\n      {\n        \"lat\":-7.757138201100933,\n        \"lon\": 110.37194575685781\n     },\n     {\n        \"lat\":-7.7577269262722695, \n        \"lon\": 110.37157402429051\n     },\n     {\n        \"lat\":-7.758263408227173, \n        \"lon\":110.37152791661391\n     }\n       ,\n        {\n        \"lat\": -7.758467197260223,\n        \"lon\":  110.37140299009435\n     },\n\n       {\n        \"lat\":-7.7586664575484585,\n        \"lon\":   110.37131919791732\n     }\n       ,\n\n       {\n        \"lat\": -7.759093424435662, \n        \"lon\":  110.37114747921133\n     }\n       ,\n          {\n        \"lat\": -7.759186466649788, \n        \"lon\":  110.37153231933341\n     }\n       ,\n          {\n        \"lat\": -7.759309353012592, \n        \"lon\": 110.37189311029819\n     },\n          {\n        \"lat\": -7.759364357876743,\n        \"lon\":  110.37201000798125\n     },\n         {\n        \"lat\": -7.759397657650908,\n        \"lon\":   110.37211778372196\n     },\n       {\n        \"lat\": -7.759716876022159,\n        \"lon\":   110.37207026968636\n     },\n      {\n        \"lat\":-7.759878239979035,\n        \"lon\":    110.37207272567058\n     },\n      {\n        \"lat\": -7.7599652779104975,\n        \"lon\":   110.3720633379393\n     }\n    ,\n    {\n        \"lat\": -7.760116859817198,\n        \"lon\":   110.37207285092374\n     }\n    ,\n    {\n        \"lat\": -7.760116859817198,\n        \"lon\":   110.37207285092374\n     },\n     {\n        \"lat\": -7.760245925138349,\n        \"lon\":    110.3720620317393\n     },\n     {\n        \"lat\":-7.760360108549582, \n        \"lon\":   110.3720116102236\n     },\n      {\n        \"lat\": -7.76040329526148,\n        \"lon\":    110.37201764519374\n     },\n        {\n        \"lat\": -7.760482360154204, \n        \"lon\":  110.37205720777666\n     },\n     {\n        \"lat\": -7.760767392292139, \n        \"lon\": 110.37203709120992\n     },\n      {\n        \"lat\": -7.76092751515807,\n        \"lon\":  110.37210951085433\n     },\n      {\n        \"lat\":-7.76107700740415, \n        \"lon\":  110.37227580781419\n     },\n      {\n        \"lat\": -7.761170076130414,\n        \"lon\":   110.3723872687133\n     },\n        {\n        \"lat\": -7.761067930681223,\n        \"lon\":   110.3724315144232\n     },\n        {\n        \"lat\": -7.760861985013989, \n        \"lon\":   110.37260226371536\n     },\n      {\n        \"lat\":-7.760758743893786,\n        \"lon\":   110.37261611770504\n     }\n      ,\n       {\n        \"lat\":-7.7608697289215725,\n        \"lon\":   110.37285725337024\n     }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/navigations/map-matching",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"navigations",
+						"map-matching"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
