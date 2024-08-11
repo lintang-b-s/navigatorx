@@ -1,36 +1,46 @@
 # navigatorx
 
-Simple Openstreetmap routing engine in go. This project uses Contraction Hierarchies to speed up shortest path queries by preprocessing the road network graph (adding many shortcut edges) and Bidirectional Dijsktra for shortest path queries. 
+Simple Openstreetmap routing engine in go. This project uses Contraction Hierarchies to speed up shortest path queries by preprocessing the road network graph (adding many shortcut edges) and Bidirectional Dijsktra for shortest path queries. H3 is used as a nearest neighbor query.
 
 ## Quick Start
-
-### Setup Server
 
 #### Docker
 
 ```
 1. docker compose up  --build
-2. tunggu preprocessing contraction hierarchies selsai (sekitar 3 menit)
+2. wait for preprocessing contraction hierarchies to complete (about 3 minutes)
 ```
 
 #### Local
 
 ```
-1. download file openstreetmap pbf di: https://drive.google.com/file/d/1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO/view?usp=sharing
-2.  taruh hasil download ke directory ./bin project ini
+1. download the jogja & solo openstreetmap pbf file at: https://drive.google.com/file/d/1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO/view?usp=sharing
+Note: or you can also use another openstreetmap file with the osm.pbf format (https://download.geofabrik.de/)
+2.  put the download results into the ./bin directory of this project
 3.  go mod tidy &&  mkdir bin
 4. CGO_ENABLED=1  go build -o ./bin/navigatorx .
 5. ./bin/navigatorx
-(Minimal free ram 1 GB buat data diatas)
-note: atau bisa juga dengan "make run"
-5.  tunggu preprocessing contraction hierarchies selsai (sekitar 3 menit)
+(Minimum free RAM 1 GB for the above data)
+note: or you can also do it with "make run"
+5.  wait for preprocessing contraction hierarchies to complete (about 3 minutes)
+```
+
+#### Change Map Data
+
+```
+1. provide openstreetmap filename flag when running the program
+ ./bin/navigatorx -f jakarta.osm.pbf
+2. for docker setup, change the Filename args "MAP_FILE" and google drive file id "DRIVE_FILE_ID" in docker-compose
+ args:
+        MAP_FILE: solo_jogja
+        DRIVE_FILE_ID: 1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO
 ```
 
 ### Shortest Path Between 2 Place in Openstreetmap
 
 ```
-1. tunggu sampai ada log "server started at :5000". Jika anda ingin query nya >10x lipat lebih cepat tunggu preprocessing Contraction Hierarchies nya selesai.
-2. request ke shortest path (source=surakarta , destination=pantai parangtritis)
+1. wait until there is a log "server started at :5000". If you want the query to be >10x faster, wait for the Contraction Hierarchies preprocessing to complete.
+2. request ke shortest path (source=surakarta , destination=pantai parangtritis) [untuk data openstreetmap pada step setup]
 curl --location 'http://localhost:5000/api/navigations/shortest-path' \
 --header 'Content-Type: application/json' \
 --data '{
@@ -40,8 +50,8 @@ curl --location 'http://localhost:5000/api/navigations/shortest-path' \
     "dst_lon":   110.32971396395838
 }'
 
-Note: Source  & Destination Coordinate harus tempat di sekitaran provinsi yogyakarta/kota surakarta/klaten  kalau pake data openstreetmap di step setup
-5. copy path polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. Rute terpendek akan tampil di peta :)
+Note: Source & Destination Coordinates must be around Yogyakarta Province/Surakarta City/Klaten if using OpenStreetMap data in the setup step
+5. Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Check Unsescape '\'. The shortest route will appear on the map. :)
 ```
 
 ### Hidden Markov Map Matching
@@ -49,20 +59,21 @@ Note: Source  & Destination Coordinate harus tempat di sekitaran provinsi yogyak
 based on https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
 
 ```
-1.tunggu sampai ada log "server started at :5000". Jika anda ingin query nya >10x lipat lebih cepat tunggu preprocessing Contraction Hierarchies nya selesai.
-2. request ke server dg data rute list of coordinate (noisy, anggap data gps)
+1. wait until there is a log "server started at :5000". If you want the query to be >10x faster, wait for the Contraction Hierarchies preprocessing to complete.
+2. request to the server with route list of gps coordinate data (or fake route coordinate data)
 curl --location 'http://localhost:5000/api/navigations/map-matching' \
 --header 'Content-Type: application/json' -d @gps_hmm_map_matching.json
-Note:  GPS Coordinate harus tempat di sekitaran provinsi yogyakarta/kota surakarta/klaten  kalau pake data openstreetmap di step setup
-3. copy path polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. hasil map matching berupa list of road network node coordinate akan muncul di peta :)
+
+Note:  GPS Coordinates must be around the Yogyakarta province/Surakarta city/Klaten if using OpenStreetMap data in the setup step
+3. Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. The map matching results in the form of a list of road network node coordinates will appear on the map. :)
 ```
 
 ### Traveling Salesman Problem Using Simulated Annealing
 
-Apa Rute terpendek (suboptimal) untuk mengunjungi kampus UGM,UNY,UPNV Jogja, UII Jogja, IAIN Surakarta, UNS, UMS, dan ISI Surakarta tepat sekali dan kembali ke lokasi kampus asal?
+What is the shortest (suboptimal) route to visit UGM, UNY, UPNV Jogja, UII Jogja, IAIN Surakarta, UNS, UMS, and ISI Surakarta campuses exactly once and return to the original campus location?
 
 ```
-1. Tunggu sampai preprocessing Contraction Hierarchies Selesai
+1. Wait until Contraction Hierarchies preprocessing is complete
 2. request query traveling salesman problem
 curl --location 'http://localhost:5000/api/navigations/tsp' \
 --header 'Content-Type: application/json' \
@@ -102,14 +113,14 @@ curl --location 'http://localhost:5000/api/navigations/tsp' \
         }
     ]
 }'
-Note:  "cities_coord" harus tempat di sekitaran provinsi yogyakarta/kota surakarta/klaten  kalau pake data openstreetmap di step setup
-3.  copy path polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. Rute terpendek TSP (suboptimal) akan tampil di peta :)
+Note:  "cities_coord" must be a place around the province of Yogyakarta/Surakarta/Klaten if using OpenStreetMap data in the setup step
+3.  Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Check Unsescape '\'. The shortest (suboptimal) TSP route will be displayed on the map. :)
 ```
 
 ### Many to Many Shortest Path Query
 
 ```
-1. tunggu sampai preprocessing contraction hierarchies selesai
+1. wait until preprocessing contraction hierarchies is complete
 2. request  query many to many
 curl --location 'http://localhost:5000/api/navigations/many-to-many' \
 --header 'Content-Type: application/json' \
@@ -148,14 +159,14 @@ curl --location 'http://localhost:5000/api/navigations/many-to-many' \
     ]
 }'
 
-Note:  "sources" dan "targets" harus tempat di sekitaran provinsi yogyakarta/kota surakarta/klaten kalau pake data openstreetmap di step setup
-3.  copy path polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. Rute terpendek many to many query akan tampil di peta :)
+Note:  "sources" and "targets" must be around the province of Yogyakarta/Surakarta/Klaten if using OpenStreetMap data in the setup step
+3.  Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. Check Unsescape '\'. The shortest route of many to many query will be displayed on the map. :)
 ```
 
 ### Shortest Path with alternative street
 
 ```
-1. tunggu sampai ada log "server started at :5000". Jika anda ingin query nya >10x lipat lebih cepat tunggu preprocessing Contraction Hierarchies nya selesai.
+1. wait until there is a log "server started at :5000". If you want the query to be >10x faster, wait for the Contraction Hierarchies preprocessing to complete.
 2. request query shortest path w/ alternative street
 curl --location 'http://localhost:5000/api/navigations/shortest-path-alternative-street' \
 --header 'Content-Type: application/json' \
@@ -168,8 +179,8 @@ curl --location 'http://localhost:5000/api/navigations/shortest-path-alternative
     "dst_lon":   110.32971396395838
 }'
 
-Note:  "sources" dan "targets" harus tempat di sekitaran provinsi yogyakarta/kota surakarta/klaten kalau pake data openstreetmap di step setup
-3. copy path polyline string hasil response endpoint tadi ke https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. Rute terpendek akan tampil di peta :)
+Note:  "sources" and "targets" must be around the province of Yogyakarta/Surakarta/Klaten if using OpenStreetMap data in the setup step
+3. Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Check Unsescape '\'. The shortest route will appear on the map. :)
 ```
 
 #### Theory / Ref

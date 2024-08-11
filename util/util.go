@@ -11,7 +11,6 @@ func RoundFloat(val float64, precision uint) float64 {
 	return math.Round(val*ratio) / ratio
 }
 
-
 func CountDecimalPlacesF64(value float64) int {
 	strValue := strconv.FormatFloat(value, 'f', -1, 64)
 
@@ -30,8 +29,6 @@ func TruncateFloat64(val float64, precision int) float64 {
 	val = valInt / prec
 	return val
 }
-
-
 
 func ReverseG[T any](arr []T) (result []T) {
 	for i, j := 0, len(arr)-1; i < j; i, j = i+1, j-1 {

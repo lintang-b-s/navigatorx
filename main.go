@@ -40,7 +40,7 @@ var (
 // @schemes	http
 func main() {
 	flag.Parse()
-	_, ch, nodeIdxMap, graphEdges := alg.BikinGraphFromOpenstreetmap(*mapFile)
+	_, ch, nodeIdxMap, graphEdges := alg.BikinGraphFromOpenstreetmap(*mapFile, )
 
 	db, err := pebble.Open("navigatorxDB", &pebble.Options{})
 	if err != nil {
@@ -49,10 +49,10 @@ func main() {
 	kvDB := alg.NewKVDB(db)
 	defer kvDB.Close()
 
-	go func () {
-		kvDB.CreateStreetKV(graphEdges, nodeIdxMap) 
+	go func() {
+		kvDB.CreateStreetKV(graphEdges, nodeIdxMap, *listenAddr)
 	}()
-	
+
 	// alg.BikinRtreeStreetNetwork(graphEdges, ch, nodeIdxMap)
 
 	r := chi.NewRouter()

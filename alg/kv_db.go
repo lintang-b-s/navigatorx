@@ -18,7 +18,7 @@ func NewKVDB(db *pebble.DB) *KVDB {
 	return &KVDB{db}
 }
 
-func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
+func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32, listenAddr string) {
 	bar := progressbar.NewOptions(len(way),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
 		progressbar.OptionEnableColorCodes(true),
@@ -73,9 +73,8 @@ func (k *KVDB) CreateStreetKV(way []SurakartaWay, nodeIDxMap map[int64]int32) {
 	workers.Wait()
 
 	fmt.Println("")
-	fmt.Println("A* Ready!!")
-	fmt.Println("")
-	fmt.Println("server started at :5000")
+	fmt.Printf("A* Ready!!\n")
+	fmt.Printf("\nserver started at %v\n", listenAddr)
 	fmt.Println("")
 }
 

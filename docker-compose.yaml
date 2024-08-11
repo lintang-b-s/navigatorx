@@ -5,7 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    mem_limit: 1500mb
+      args:
+        MAP_FILE: solo_jogja
+        DRIVE_FILE_ID: 1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO
+    mem_limit: 2000mb
     cpus: 6
     ports:
       - "5000:5000"

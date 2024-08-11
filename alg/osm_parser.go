@@ -26,7 +26,7 @@ func BikinGraphFromOpenstreetmap(mapFile string) ([]SurakartaWay, *ContractedGra
 	f, err := os.Open(mapFile)
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer f.Close()
 
@@ -87,7 +87,7 @@ func BikinGraphFromOpenstreetmap(mapFile string) ([]SurakartaWay, *ContractedGra
 
 	f.Seek(0, io.SeekStart)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	scanner = osmpbf.New(context.Background(), f, 3)
 	defer scanner.Close()
