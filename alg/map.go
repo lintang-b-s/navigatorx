@@ -22,7 +22,7 @@ type Coordinate struct {
 type SurakartaWay struct {
 	ID                  int32
 	CenterLoc           []float64 // [lat, lon]
-	Nodes               []CHNode2  // yang bukan intersectionNodes
+	Nodes               []CHNode2 // yang bukan intersectionNodes
 	IntersectionNodesID []int64
 }
 
@@ -149,7 +149,7 @@ func processOnlyIntersectionRoadNodes(nodeMap map[int64]*Node, ways []*osm.Way, 
 	alreadyAdded := make(map[int64]struct{})
 	intersectionNodes := []int64{}
 	for wayIDx, way := range ways {
-		maxSpeed, isOneWay, reversedOneWay, roadType := getMaxspeedOneWayRoadType(*way)
+		maxSpeed, isOneWay, reversedOneWay, roadType, _ := getMaxspeedOneWayRoadType(*way)
 		if !isOsmWayUsedByCars(way.TagMap()) {
 			continue
 		}
@@ -239,7 +239,7 @@ func processOnlyIntersectionRoadNodes(nodeMap map[int64]*Node, ways []*osm.Way, 
 	return surakartaNodes, surakartaWays, graphEdges
 }
 
-func getMaxspeedOneWayRoadType(way osm.Way) (float64, bool, bool, string) {
+func getMaxspeedOneWayRoadType(way osm.Way) (float64, bool, bool, string, string) {
 
 	maxSpeed := 50.0
 
@@ -247,6 +247,7 @@ func getMaxspeedOneWayRoadType(way osm.Way) (float64, bool, bool, string) {
 	reversedOneWay := false
 
 	roadTypes := make(map[string]int)
+	namaJalan := ""
 
 	roadType := ""
 
@@ -268,11 +269,15 @@ func getMaxspeedOneWayRoadType(way osm.Way) (float64, bool, bool, string) {
 			}
 		}
 
+		if tag.Key == "name" {
+			namaJalan = tag.Value
+		}
+
 	}
 	if maxSpeed == 50.0 || maxSpeed == 0 {
 		maxSpeed = RoadTypeMaxSpeed(roadType)
 	}
-	return maxSpeed, isOneWay, reversedOneWay, roadType
+	return maxSpeed, isOneWay, reversedOneWay, roadType, namaJalan
 }
 
 func WriteWayTypeToCsv(wayTypesMap map[string]int64, filename string) {

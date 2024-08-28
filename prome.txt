@@ -1,0 +1,22 @@
+https://medium.com/@shershnev/another-way-of-visualization-prometheus-histogram-8442aebc932a
+
+
+
+
+hey -n 10000 -c 300 -m POST  -H 'Content-Type: application/json' \
+-d '{
+    "src_lat": -7.550261232598317,
+    "src_lon":    110.78210790296636,
+    "dst_lat": -8.024431446370416,
+    "dst_lon":   110.32971396395838
+}'  'http://localhost:5000/api/navigations/shortest-path'
+
+
+
+curl  -H 'Content-Type: application/json' \
+-d '{
+    "src_lat": -30.550261232598317,
+    "src_lon":    20.78210790296636,
+    "dst_lat": -55.024431446370416,
+    "dst_lon":   22.32971396395838
+}'  'http://localhost:5000/api/navigations/shortest-path'

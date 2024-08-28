@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"lintang/navigatorx/alg"
-	"lintang/navigatorx/types"
 	"lintang/navigatorx/service"
+	"lintang/navigatorx/types"
 	"lintang/navigatorx/util"
 	"math"
 	"net/http"
@@ -39,11 +39,12 @@ type NavigationService interface {
 }
 
 type NavigationHandler struct {
-	svc NavigationService
+	svc          NavigationService
+	promeMetrics *metrics
 }
 
-func NavigatorRouter(r *chi.Mux, svc NavigationService) {
-	handler := &NavigationHandler{svc}
+func NavigatorRouter(r *chi.Mux, svc NavigationService, m *metrics) {
+	handler := &NavigationHandler{svc, m}
 
 	r.Group(func(r chi.Router) {
 		r.Route("/api/navigations", func(r chi.Router) {
@@ -58,6 +59,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService) {
 }
 
 // SortestPathRequest model info
+//
 //	@Description	request body untuk shortest path query antara 2 tempat di openstreetmap
 type SortestPathRequest struct {
 	SrcLat float64 `json:"src_lat" validate:"required,lt=90,gt=-90"`
@@ -74,6 +76,7 @@ func (s *SortestPathRequest) Bind(r *http.Request) error {
 }
 
 // SortestPathAlternativeStreetRequest model info
+//
 //	@Description	request body untuk shortest path query antara banyak source dan banyak destination di openstreetmap
 type SortestPathAlternativeStreetRequest struct {
 	SrcLat               float64 `json:"src_lat" validate:"required,lt=90,gt=-90"`
@@ -92,6 +95,7 @@ func (s *SortestPathAlternativeStreetRequest) Bind(r *http.Request) error {
 }
 
 // ShortestPathResponse	model info
+//
 //	@Description	response body untuk shortest path query antara 2 tempat di openstreetmap
 type ShortestPathResponse struct {
 	Path        string           `json:"path"`
@@ -122,6 +126,7 @@ func NewShortestPathResponse(path string, distance float64, navs []alg.Navigatio
 }
 
 // shortestPathETA
+//
 //	@Summary		shortest path query antara 2 tempat di openstreetmap.
 //	@Description	shortest path query antara 2 tempat di openstreetmap. Hanya 1 source dan 1 destination
 //	@Tags			navigations
@@ -150,6 +155,7 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	h.promeMetrics.SPQueryCount.WithLabelValues("true").Inc()
 	p, dist, n, found, route, eta, isCH, err := h.svc.ShortestPathETA(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
 	if err != nil {
 		if !found {
@@ -165,6 +171,7 @@ func (h *NavigationHandler) shortestPathETA(w http.ResponseWriter, r *http.Reque
 }
 
 // shortestPathAlternativeStreetETA
+//
 //	@Summary		shortest path query antara 2 tempat di openstreetmap dengan menentukan alternative street untuk rutenya.
 //	@Description	shortest path query antara 2 tempat di openstreetmap dengan menentukan alternative street untuk rutenya.. Hanya 1 source dan 1 destination
 //	@Tags			navigations
@@ -193,6 +200,7 @@ func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWrit
 		return
 	}
 
+	h.promeMetrics.SPQueryCount.WithLabelValues("true").Inc()
 	p, dist, n, found, route, eta, isCH, err := h.svc.ShortestPathAlternativeStreetETA(r.Context(), data.SrcLat, data.SrcLon, data.StreetAlternativeLat, data.StreetAlternativeLon,
 		data.DstLat, data.DstLon)
 	if err != nil {
@@ -209,6 +217,7 @@ func (h *NavigationHandler) shortestPathAlternativeStreetETA(w http.ResponseWrit
 }
 
 // shortestPathETACH
+//
 //	@Summary		shortest path query antara 2 tempat di openstreetmap  pake bidirectional dijkstra only, sebenarnya di endpoint shortest-path juga pake bidirectional dijkstra. jika preprocessing contraction hierarchiesnya selesai
 //	@Description	shortest path query antara 2 tempat di openstreetmap  pake bidirectional dijkstra only, sebenarnya di endpoint shortest-path juga pake bidirectional dijkstra. jika preprocessing contraction hierarchiesnya selesai. Hanya 1 source dan 1 destination
 //	@Tags			navigations
@@ -237,6 +246,7 @@ func (h *NavigationHandler) shortestPathETACH(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	h.promeMetrics.SPQueryCount.WithLabelValues("true").Inc()
 	p, n, route, eta, dist, err := h.svc.ShortestPathETACH(r.Context(), data.SrcLat, data.SrcLon, data.DstLat, data.DstLon)
 	if err != nil {
 
@@ -253,12 +263,14 @@ func (h *NavigationHandler) shortestPathETACH(w http.ResponseWriter, r *http.Req
 }
 
 // MapMatchingRequest model info
+//
 //	@Description	request body untuk map matching pakai hidden markov model
 type MapMatchingRequest struct {
 	Coordinates []Coord `json:"coordinates" validate:"required,dive"`
 }
 
 // Coord model info
+//
 //	@Description	model untuk koordinat
 type Coord struct {
 	Lat float64 `json:"lat" validate:"required,lt=90,gt=-90"`
@@ -273,6 +285,7 @@ func (s *MapMatchingRequest) Bind(r *http.Request) error {
 }
 
 // MapMatchingResponse model info
+//
 //	@Description	response body untuk map matching pakai hidden markov model
 type MapMatchingResponse struct {
 	Path        string  `json:"path"`
@@ -295,6 +308,7 @@ func RenderMapMatchingResponse(path string, coords []alg.CHNode2) *MapMatchingRe
 }
 
 // HiddenMarkovModelMapMatching
+//
 //	@Summary		map matching pakai hidden markov model. Snapping noisy GPS coordinates ke road network lokasi asal gps seharusnya
 //	@Description	map matching pakai hidden markov model. Snapping noisy GPS coordinates ke road network lokasi asal gps seharusnya
 //	@Tags			navigations
@@ -341,6 +355,7 @@ func (h *NavigationHandler) HiddenMarkovModelMapMatching(w http.ResponseWriter, 
 }
 
 // ManyToManyQueryRequest model info
+//
 //	@Description	response body untuk query shortest path many to many
 type ManyToManyQueryRequest struct {
 	Sources []Coord `json:"sources" validate:"required,dive"`
@@ -355,6 +370,7 @@ func (s *ManyToManyQueryRequest) Bind(r *http.Request) error {
 }
 
 // NodeRes model info
+//
 //	@Description	model untuk node coordinate
 type NodeRes struct {
 	Lat float64 `json:"lat" `
@@ -362,6 +378,7 @@ type NodeRes struct {
 }
 
 // TargetRes model info
+//
 //	@Description	model untuk destinations di query shortest path many to many
 type TargetRes struct {
 	Target NodeRes `json:"target"`
@@ -371,6 +388,7 @@ type TargetRes struct {
 }
 
 // SrcTargetPair model info
+//
 //	@Description	model untuk mapping source dan target di query shortest path many to many
 type SrcTargetPair struct {
 	Source  NodeRes     `json:"source"`
@@ -378,12 +396,14 @@ type SrcTargetPair struct {
 }
 
 // ManyToManyQueryResponse model info
+//
 //	@Description	response body untuk query shortest path many to many
 type ManyToManyQueryResponse struct {
 	Results []SrcTargetPair `json:"results"`
 }
 
 // ManyToManyQuery
+//
 //	@Summary		many to many query shortest path . punya banyak source dan banyak destination buat querynya. Mencari shortesth path ke setiap destination untuk setiap source
 //	@Description	many to many query shortest path . punya banyak source dan banyak destination buat querynya
 //	@Tags			navigations
@@ -411,6 +431,7 @@ func (h *NavigationHandler) ManyToManyQuery(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	
 	sourcesLat, sourcesLon, destsLat, destsLon := []float64{}, []float64{}, []float64{}, []float64{}
 	for _, s := range data.Sources {
 		sourcesLat = append(sourcesLat, s.Lat)
@@ -458,6 +479,7 @@ func RenderManyToManyQueryResponse(res map[alg.Coordinate][]service.TargetResult
 }
 
 // TravelingSalesmanProblemRequest model info
+//
 //	@Description	request body untuk traveling salesman problem query
 type TravelingSalesmanProblemRequest struct {
 	CitiesCoord []Coord `json:"cities_coord" validate:"required,dive"`
@@ -471,6 +493,7 @@ func (s *TravelingSalesmanProblemRequest) Bind(r *http.Request) error {
 }
 
 // TravelingSalesmanProblemResponse model info
+//
 //	@Description	response body untuk traveling salesman problem query
 type TravelingSalesmanProblemResponse struct {
 	Path   string           `json:"path"`
@@ -480,6 +503,7 @@ type TravelingSalesmanProblemResponse struct {
 }
 
 // TravelingSalesmanProblemSimulatedAnnealing
+//
 //	@Summary		query traveling salesman problem pakai simulated annealing. Shortest path untuk rute mengunjungi beberapa tempat tepat sekali dan kembali ke tempat asal
 //	@Description	query traveling salesman problem pakai simulated annealing. Shortest path untuk rute mengunjungi beberapa tempat tepat sekali dan kembali ke tempat asal
 //	@Tags			navigations
@@ -528,7 +552,9 @@ func RenderTravelingSalesmanProblemResponse(path string, dist float64, eta float
 		Cities: cities,
 	}
 }
+
 // ErrResponse model info
+//
 //	@Description	model untuk error response
 type ErrResponse struct {
 	Err            error `json:"-"` // low-level runtime error

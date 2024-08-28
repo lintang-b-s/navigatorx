@@ -484,9 +484,7 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 			// incoming edge ke nodeIDx
 			if inEdge.ToNodeIDX == nodeIDx && !inEdge.IsShortcut {
 				ind = append(ind, i)
-
 			}
-
 		}
 		ind = util.ReverseG(ind)
 		for _, edgeIDx := range ind {
@@ -515,7 +513,6 @@ func (ch *ContractedGraph) removeContractedNode(nodeIDx int32) {
 			ch.Metadata.degrees[nd]--
 			ch.Metadata.InEdgeOrigCount[nd]-- // incoming edge ke nd berkurang 1
 		}
-
 	}
 
 	ch.Metadata.degrees[nodeIDx] = 0
