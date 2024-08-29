@@ -8,7 +8,7 @@ Simple Openstreetmap routing engine in go. This project uses Contraction Hierarc
 
 ```
 1. docker compose up  --build
-2. wait for preprocessing contraction hierarchies to complete (about 3 minutes)
+2. wait for preprocessing contraction hierarchies to complete (about 3 minutes) [you can check it with 'docker logs navigatorx -f', wait until the text 'Contraction Hierarchies + Bidirectional Dijkstra Ready!!' appears  ]
 ```
 
 #### Local

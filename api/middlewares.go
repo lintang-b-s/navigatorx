@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -87,7 +86,6 @@ func PromeHttpMiddleware(m *metrics) func(http.Handler) http.Handler {
 			timer.ObserveDuration()
 			m.durationSummary.Observe(time.Since(now).Seconds())
 
-			fmt.Printf("debug increment count: status code: %d, method: %s, path: %s\n", statusCode, r.Method, path)
 		})
 	}
 }

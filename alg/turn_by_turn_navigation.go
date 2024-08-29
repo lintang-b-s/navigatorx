@@ -35,8 +35,12 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 
 	currStDist := 0.0
 	currStETA := 0.0
-	beforeLastN := CHNode2{}
-	currStreet := ""
+	// beforeLastN := CHNode2{}
+	currStreet := p[0].StreetName
+	if currStreet == "" {
+		currStreet = p[1].StreetName
+	}
+	lastStreetNode := p[0]
 
 	for i := 0; i < len(p)-2; i++ {
 		pathN := p[i]
@@ -70,18 +74,41 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 
 		turn := calculateSign(pathN2.Lat, pathN2.Lon,
 			pathN3.Lat, pathN3.Lon, b1)
-		// if (turn == CONTINUE_ON_STREET && pathN2.StreetName != "" && pathN3.StreetName != "" && pathN2.StreetName == pathN3.StreetName) || turn == SLIGHT_LEFT || turn == SLIGHT_RIGHT ||
-		// 	(turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName) || (turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName && pathN3.StreetName == "") ||
-		// 	(turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName && pathN2.StreetName == "") || (currStreet != "" && currStreet == pathN3.StreetName) || (pathN2.StreetName == "" && pathN3.StreetName != "") ||
-		// 	(turn == CONTINUE_ON_STREET && pathN3.StreetName == "") || (i+3<len(p) && pathN3.StreetName != p[i+3].StreetName && turn == CONTINUE_ON_STREET){
-		// 	continue
-		// }
 
-		if (turn == CONTINUE_ON_STREET && pathN2.StreetName != "" && pathN3.StreetName != "" && pathN2.StreetName == pathN3.StreetName) || turn == SLIGHT_LEFT || turn == SLIGHT_RIGHT ||
+		if pathN3.StreetName == currStreet && currStreet != "" {
+			lastStreetNode = pathN3
+		}
+
+		if (currStreet != "" && turn == CONTINUE_ON_STREET && pathN2.StreetName != "" && pathN3.StreetName != "" && pathN2.StreetName == pathN3.StreetName) || turn == SLIGHT_LEFT || turn == SLIGHT_RIGHT ||
 			(turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName) ||
-			(turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName && pathN2.StreetName == "") || (currStreet != "" && currStreet == pathN3.StreetName) || (pathN2.StreetName == "" && pathN3.StreetName != "") ||
-			(turn == CONTINUE_ON_STREET && pathN3.StreetName == "") || (i+3 < len(p) && pathN3.StreetName != p[i+3].StreetName && turn == CONTINUE_ON_STREET) {
+			(currStreet != "" && currStreet == pathN3.StreetName) ||
+
+			(turn == CONTINUE_ON_STREET && currStreet == "" && pathN2.StreetName == "" && pathN3.StreetName != "") ||
+			(turn == CONTINUE_ON_STREET && pathN3.StreetName == "") ||
+			(i+4 < len(p) && currStreet != pathN3.StreetName && p[i+4].StreetName != pathN3.StreetName && turn == CONTINUE_ON_STREET) ||
+			(pathN2.StreetName != "" && pathN3.StreetName != "" && pathN2.StreetName == pathN3.StreetName && currStreet == pathN3.StreetName) ||
+			(currStreet != "" && currStreet != pathN2.StreetName && pathN2.StreetName != pathN3.StreetName && currStreet == pathN3.StreetName) {
+
 			continue
+		}
+
+		if currStreet != "" {
+			pathN = MakeSixDigitsAfterComa2(lastStreetNode, 6)
+			pathN2 = MakeSixDigitsAfterComa2(pathN2, 6)
+			pathN3 = MakeSixDigitsAfterComa2(pathN3, 6)
+
+			b1 := calcOrientation(pathN.Lat, pathN.Lon, pathN2.Lat,
+				pathN2.Lon)
+
+			b2 := calcOrientation(pathN2.Lat, pathN2.Lon,
+				pathN3.Lat, pathN3.Lon)
+
+			if b1 == 0 || b2 == 0 {
+				continue
+			}
+
+			turn = calculateSign(pathN2.Lat, pathN2.Lon,
+				pathN3.Lat, pathN3.Lon, b1)
 		}
 
 		if pathN3.StreetName != "" {
@@ -102,7 +129,7 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 
 	beforeDestionationLat := p[len(p)-1].Lat
 	beforeDestionationLon := p[len(p)-1].Lon
-	stLoc := NewLocation(beforeLastN.Lat, beforeLastN.Lon)
+	stLoc := NewLocation(lastStreetNode.Lat, lastStreetNode.Lon)
 	pathNLoc := NewLocation(beforeDestionationLat, beforeDestionationLon)
 	currStDist = HaversineDistance(stLoc, pathNLoc) * 1000
 	maxSpeed := float64(30 * 1000 / 60)
@@ -113,13 +140,13 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 			errors.New("maaf graph nodes dari openstreetmap  diantara shortest path route tidak ada nama jalannya (kotanya primitif)")
 	}
 
-	if n[len(n)-1].StreetName == "" {
-		n[len(n)-1].StreetName = "Jalan Unknown"
-	}
+	// if n[len(n)-1].StreetName == "" {
+	// 	n[len(n)-1].StreetName = "Jalan Unknown"
+	// }
 	n = append(n, Navigation{
 		StreetName: n[len(n)-1].StreetName,
-		TurnETA:    util.RoundFloat(currStETA, 2),  //CalculateETA(startSTNodeBeforeTurn, pathN2),
-		TurnDist:   util.RoundFloat(currStDist, 2), //  HaversineDistance(stLoc, turnLoc),
+		TurnETA:    util.RoundFloat(currStETA, 2),  
+		TurnDist:   util.RoundFloat(currStDist, 2), 
 		Turn:       CONTINUE_ON_STREET,
 	})
 
@@ -133,11 +160,23 @@ func CreateTurnByTurnNavigationCH(p []CHNode2) ([]Navigation, error) {
 		}
 
 		if i == len(n)-1 {
-			n[i].Instruction = fmt.Sprintf(`Lurus dari awal %s ke tempat tujuan (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			if n[i].StreetName == "" {
+				n[i].Instruction = fmt.Sprintf(`Lurus  ke tempat tujuan (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].TurnDist, n[i].TurnETA)
+			} else {
+				n[i].Instruction = fmt.Sprintf(`Lurus dari awal %s ke tempat tujuan (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			}
 		} else if n[i].Turn != CONTINUE_ON_STREET {
-			n[i].Instruction = fmt.Sprintf(`Belok %s ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].Turn, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			if n[i].StreetName == "" {
+				n[i].Instruction = fmt.Sprintf(`Belok %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].Turn, n[i].TurnDist, n[i].TurnETA)
+			} else {
+				n[i].Instruction = fmt.Sprintf(`Belok %s ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].Turn, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			}
 		} else {
-			n[i].Instruction = fmt.Sprintf(`Lurus ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			if n[i].StreetName == "" {
+				n[i].Instruction = fmt.Sprintf(`Lurus (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].TurnDist, n[i].TurnETA)
+			} else {
+				n[i].Instruction = fmt.Sprintf(`Lurus ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			}
 		}
 
 		if (n[i].TurnETA == 0 || n[i].TurnDist == 0) && i > 1 {
@@ -166,11 +205,16 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 		return n, nil
 	}
 
-	startSTNodeBeforeTurn := p[0]
+	// startSTNodeBeforeTurn := p[0]
 	currStDist := 0.0
 	currStETA := 0.0
+	currStreet := p[0].StreetName
+	if currStreet == "" {
+		currStreet = p[1].StreetName
+	}
+	lastStreetNode := p[0]
 
-	for i := 0; i < len(p)-3; i++ {
+	for i := 0; i < len(p)-2; i++ {
 		pathN := p[i]
 		pathN2 := p[i+1]
 		pathN3 := p[i+2]
@@ -202,8 +246,45 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 
 		turn := calculateSign(pathN2.Lat, pathN2.Lon,
 			pathN3.Lat, pathN3.Lon, b1)
-		if (turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName) || turn == SLIGHT_LEFT || turn == SLIGHT_RIGHT {
+
+		if pathN3.StreetName == currStreet && currStreet != "" {
+			lastStreetNode = pathN3
+		}
+
+		if (currStreet != "" && turn == CONTINUE_ON_STREET && pathN2.StreetName != "" && pathN3.StreetName != "" && pathN2.StreetName == pathN3.StreetName) || turn == SLIGHT_LEFT || turn == SLIGHT_RIGHT ||
+			(turn == CONTINUE_ON_STREET && pathN2.StreetName == pathN3.StreetName) ||
+			(currStreet != "" && currStreet == pathN3.StreetName) ||
+
+			(turn == CONTINUE_ON_STREET && currStreet == "" && pathN2.StreetName == "" && pathN3.StreetName != "") ||
+			(turn == CONTINUE_ON_STREET && pathN3.StreetName == "") ||
+			(i+4 < len(p) && currStreet != pathN3.StreetName && p[i+4].StreetName != pathN3.StreetName && turn == CONTINUE_ON_STREET) ||
+			(pathN2.StreetName != "" && pathN3.StreetName != "" && pathN2.StreetName == pathN3.StreetName && currStreet == pathN3.StreetName) ||
+			(currStreet != "" && currStreet != pathN2.StreetName && pathN2.StreetName != pathN3.StreetName && currStreet == pathN3.StreetName) {
+
 			continue
+		}
+
+		if currStreet != "" {
+			pathN = MakeSixDigitsAfterComa(lastStreetNode, 6)
+			pathN2 = MakeSixDigitsAfterComa(pathN2, 6)
+			pathN3 = MakeSixDigitsAfterComa(pathN3, 6)
+
+			b1 := calcOrientation(pathN.Lat, pathN.Lon, pathN2.Lat,
+				pathN2.Lon)
+
+			b2 := calcOrientation(pathN2.Lat, pathN2.Lon,
+				pathN3.Lat, pathN3.Lon)
+
+			if b1 == 0 || b2 == 0 {
+				continue
+			}
+
+			turn = calculateSign(pathN2.Lat, pathN2.Lon,
+				pathN3.Lat, pathN3.Lon, b1)
+		}
+
+		if pathN3.StreetName != "" {
+			currStreet = pathN3.StreetName
 		}
 
 		n = append(n, Navigation{
@@ -220,7 +301,7 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 
 	beforeDestionationLat := p[len(p)-1].Lat
 	beforeDestionationLon := p[len(p)-1].Lon
-	stLoc := NewLocation(startSTNodeBeforeTurn.Lat, startSTNodeBeforeTurn.Lon)
+	stLoc := NewLocation(lastStreetNode.Lat, lastStreetNode.Lon)
 	pathNLoc := NewLocation(beforeDestionationLat, beforeDestionationLon)
 	currStDist = HaversineDistance(stLoc, pathNLoc) * 1000
 	maxSpeed := float64(30 * 1000 / 60)
@@ -231,13 +312,13 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 			errors.New("maaf graph nodes dari openstreetmap  diantara shortest path route tidak ada nama jalannya (kotanya primitif)")
 	}
 
-	if n[len(n)-1].StreetName == "" {
-		n[len(n)-1].StreetName = "Jalan Unknown"
-	}
+	// if n[len(n)-1].StreetName == "" {
+	// 	n[len(n)-1].StreetName = "Jalan Unknown"
+	// }
 	n = append(n, Navigation{
 		StreetName: n[len(n)-1].StreetName,
-		TurnETA:    util.RoundFloat(currStETA, 2),  //CalculateETA(startSTNodeBeforeTurn, pathN2),
-		TurnDist:   util.RoundFloat(currStDist, 2), //  HaversineDistance(stLoc, turnLoc),
+		TurnETA:    util.RoundFloat(currStETA, 2),
+		TurnDist:   util.RoundFloat(currStDist, 2),
 		Turn:       CONTINUE_ON_STREET,
 	})
 
@@ -251,11 +332,23 @@ func CreateTurnByTurnNavigation(p []CHNode) ([]Navigation, error) {
 		}
 
 		if i == len(n)-1 {
-			n[i].Instruction = fmt.Sprintf(`CONTINUE_ON_STREET dari awal %s ke tempat tujuan (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			if n[i].StreetName == "" {
+				n[i].Instruction = fmt.Sprintf(`Lurus  ke tempat tujuan (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].TurnDist, n[i].TurnETA)
+			} else {
+				n[i].Instruction = fmt.Sprintf(`Lurus dari awal %s ke tempat tujuan (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			}
 		} else if n[i].Turn != CONTINUE_ON_STREET {
-			n[i].Instruction = fmt.Sprintf(`Belok %s ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].Turn, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			if n[i].StreetName == "" {
+				n[i].Instruction = fmt.Sprintf(`Belok %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].Turn, n[i].TurnDist, n[i].TurnETA)
+			} else {
+				n[i].Instruction = fmt.Sprintf(`Belok %s ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].Turn, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			}
 		} else {
-			n[i].Instruction = fmt.Sprintf(`CONTINUE_ON_STREET ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			if n[i].StreetName == "" {
+				n[i].Instruction = fmt.Sprintf(`Lurus (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].TurnDist, n[i].TurnETA)
+			} else {
+				n[i].Instruction = fmt.Sprintf(`Lurus ke %s (%.2f meter dari jalan sebelumnya) (%.2f menit)`, n[i].StreetName, n[i].TurnDist, n[i].TurnETA)
+			}
 		}
 
 		if (n[i].TurnETA == 0 || n[i].TurnDist == 0) && i > 1 {
