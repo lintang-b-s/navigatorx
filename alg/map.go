@@ -171,6 +171,7 @@ func processOnlyIntersectionRoadNodes(nodeMap map[int64]*Node, ways []*osm.Way, 
 			to := nodeMap[int64(currNode.ID)]
 
 			if to.UsedInRoad >= 2 {
+
 				// nodenya ada di intersection of 2  or more roads
 
 				// add edge antara dua node intersection

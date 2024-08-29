@@ -61,6 +61,8 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+
+
 	r.Use(api.PromeHttpMiddleware(m)) // prometheus http middleware
 	r.Mount("/debug", middleware.Profiler())
 
@@ -84,3 +86,32 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(*listenAddr, r))
 }
+
+
+
+
+// use log middleware below if u want to use elk for logging
+// logFile, err := os.OpenFile("./logs/navigatorx.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0777)
+// if err != nil {
+// 	log.Fatal(err)
+// }
+// logger := httplog.NewLogger("navigatorx", httplog.Options{
+// 	Writer:   io.MultiWriter(os.Stdout, logFile),
+// 	LogLevel: slog.LevelDebug,
+// 	JSON:     true,
+// 	Concise:  true,
+// 	// RequestHeaders:   true,
+// 	// ResponseHeaders:  true,
+// 	MessageFieldName: "message",
+// 	LevelFieldName:   "severity",
+// 	TimeFieldFormat:  time.RFC3339,
+// 	Tags: map[string]string{
+// 		"version": "v1.0",
+// 		"env":     "dev",
+// 	},
+// 	QuietDownRoutes: []string{
+// 		"/metrics",
+// 	},
+// 	QuietDownPeriod: 10 * time.Second,
+// })
+// r.Use(httplog.RequestLogger(logger, []string{}))
