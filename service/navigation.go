@@ -48,11 +48,11 @@ func (uc *NavigationService) ShortestPathETA(ctx context.Context, srcLat, srcLon
 	var err error
 	fromSurakartaNode, err := uc.SnapLocToStreetNode(from.Lat, from.Lon)
 	if err != nil {
-		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
+		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, types.WrapErrorf(err, types.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
 	}
 	toSurakartaNode, err := uc.SnapLocToStreetNode(to.Lat, to.Lon)
 	if err != nil {
-		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, nil
+		return "", 0, []alg.Navigation{}, false, []alg.Coordinate{}, 0.0, false, types.WrapErrorf(err, types.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
 	}
 
 	var pN = []alg.CHNode2{}

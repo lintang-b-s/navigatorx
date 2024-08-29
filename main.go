@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"runtime"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	_ "net/http/pprof"
@@ -40,7 +42,7 @@ var (
 // @schemes	http
 func main() {
 	flag.Parse()
-	_, ch, nodeIdxMap, graphEdges := alg.BikinGraphFromOpenstreetmap(*mapFile, )
+	_, ch, nodeIdxMap, graphEdges := alg.BikinGraphFromOpenstreetmap(*mapFile)
 
 	db, err := pebble.Open("navigatorxDB", &pebble.Options{})
 	if err != nil {
@@ -53,17 +55,23 @@ func main() {
 		kvDB.CreateStreetKV(graphEdges, nodeIdxMap, *listenAddr)
 	}()
 
+	reg := prometheus.NewRegistry()
+	m := api.NewMetrics(reg)
 	// alg.BikinRtreeStreetNetwork(graphEdges, ch, nodeIdxMap)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(api.PromeHttpMiddleware(m)) // prometheus http middleware
 	r.Mount("/debug", middleware.Profiler())
+
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:5000/swagger/doc.json"), //The url pointing to API definition
 	))
 	ch.KVdb = kvDB
 	navigatorSvc := service.NewNavigationService(ch, kvDB)
-	api.NavigatorRouter(r, navigatorSvc)
+	api.NavigatorRouter(r, navigatorSvc, m)
 
 	go func() {
 		ch.Contraction()

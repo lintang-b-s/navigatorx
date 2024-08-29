@@ -150,7 +150,7 @@ func (ch *ContractedGraph) ShortestPathBiDijkstra(from, to int32) ([]CHNode2, fl
 						if !ok || newCost < db[toNIDx] {
 							db[toNIDx] = newCost
 
-							neighborNode := nmf.getCHDJ2(ch.ContractedNodes[toNIDx])
+							neighborNode := nmb.getCHDJ2(ch.ContractedNodes[toNIDx])
 							neighborNode.rank = newCost
 							heap.Push(frontier, neighborNode)
 
