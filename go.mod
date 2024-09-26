@@ -7,7 +7,6 @@ require (
 	github.com/cockroachdb/pebble v1.1.1
 	github.com/dhconnelly/rtreego v1.2.0
 	github.com/go-chi/chi/v5 v5.1.0
-	github.com/go-chi/httplog/v2 v2.1.1
 	github.com/go-chi/render v1.0.3
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1

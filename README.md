@@ -16,7 +16,7 @@ Simple Openstreetmap routing engine in go. This project uses Contraction Hierarc
 ```
 1. download the jogja & solo openstreetmap pbf file at: https://drive.google.com/file/d/1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO/view?usp=sharing
 Note: or you can also use another openstreetmap file with the osm.pbf format (https://download.geofabrik.de/)
-2.  put the download results into the ./bin directory of this project
+2.  put the download results into the root directory of this project
 3.  go mod tidy &&  mkdir bin
 4. CGO_ENABLED=1  go build -o ./bin/navigatorx .
 5. ./bin/navigatorx
@@ -55,7 +55,7 @@ Note: Source & Destination Coordinates must be around Yogyakarta Province/Suraka
 ```
 
 ### Hidden Markov Map Matching
-
+snap driver trip GPS traces on map street data. 
 based on https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
 
 ```

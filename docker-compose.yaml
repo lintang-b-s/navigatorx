@@ -66,7 +66,7 @@ services:
   # elasticsearch:
   #       image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
   #       volumes:
-  #           - ./resources/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+  #           - ./deploy/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
   #       healthcheck:
   #           test: ["CMD", "curl", "-s", "-f", "http://localhost:9200/_cat/health"]
   #           interval: 3s
@@ -78,7 +78,7 @@ services:
   # logstash:
   #     image: docker.elastic.co/logstash/logstash:7.6.2
   #     volumes:
-  #         - ./resources/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+  #         - ./deploy/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
   #     depends_on:
   #         elasticsearch:
   #             condition: service_healthy
@@ -89,7 +89,7 @@ services:
   #         elasticsearch:
   #             condition: service_healthy
   #     volumes:
-  #         - ./resources/filebeat.yml:/usr/share/filebeat/filebeat.yml
+  #         - ./deploy/filebeat.yml:/usr/share/filebeat/filebeat.yml
   #         - ./logs/:/logs/
 
   # kibana:
