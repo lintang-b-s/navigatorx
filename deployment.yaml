@@ -1,0 +1,39 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navigatorx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: navigatorx
+  template:
+    metadata:
+      labels:
+        app: navigatorx
+    spec:
+      containers:
+      - name:  navigatorx
+        image: docker.io/lintangbirdas/navigatorx
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: "3000Mi"
+            cpu: "1000m"
+        ports:
+        - containerPort: 5000
+        
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navigatorx
+spec:
+  ports:
+    - port: 6000
+      targetPort: 5000
+  selector: 
+    app: navigatorx
+      
