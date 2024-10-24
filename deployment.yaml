@@ -23,7 +23,7 @@ spec:
             cpu: "1000m"
         ports:
         - containerPort: 5000
-        
+      
 
 ---
 apiVersion: v1

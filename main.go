@@ -20,6 +20,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 var (
@@ -60,10 +61,18 @@ func main() {
 	// alg.BikinRtreeStreetNetwork(graphEdges, ch, nodeIdxMap)
 
 	r := chi.NewRouter()
+
 	r.Use(middleware.Logger)
 
-
 	r.Use(api.PromeHttpMiddleware(m)) // prometheus http middleware
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, 
+	}))
 	r.Mount("/debug", middleware.Profiler())
 
 	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
@@ -86,9 +95,6 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(*listenAddr, r))
 }
-
-
-
 
 // use log middleware below if u want to use elk for logging
 // logFile, err := os.OpenFile("./logs/navigatorx.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0777)

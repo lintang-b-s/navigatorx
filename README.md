@@ -186,12 +186,14 @@ Note:  "sources" and "targets" must be around the province of Yogyakarta/Surakar
 #### Theory / Ref
 
 ```
-https://jlazarsfeld.github.io/ch.150.project/sections/7-ch-overview/
-https://www.uber.com/en-ID/blog/engineering-routing-engine/
-https://www.uber.com/en-ID/blog/h3/
-https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
-https://www.uber.com/blog/mapping-accuracy-with-catchme/
-http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
+- R. Geisberger, P. Sanders, D. Schultes, and D. Delling, “Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks,” in Experimental Algorithms, C. C. McGeoch, Ed., Berlin, Heidelberg: Springer, 2008, pp. 319–333. doi: 10.1007/978-3-540-68552-4_24.
+-  “Hidden Markov Map Matching Through Noise and Sparseness - Microsoft Research.” Accessed: Oct. 24, 2024. [Online]. Available: https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
+- https://en.wikipedia.org/wiki/Simulated_annealing#:~:text=Simulated%20annealing%20(SA)%20is%20a,can%20find%20the%20global%20optimum.
+- https://jlazarsfeld.github.io/ch.150.project/sections/7-ch-overview/
+- https://www.uber.com/en-ID/blog/engineering-routing-engine/
+- https://www.uber.com/en-ID/blog/h3/
+- https://www.uber.com/blog/mapping-accuracy-with-catchme/
+- http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 ```
 
 go build -gcflags "-m -l" \*.go

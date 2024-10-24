@@ -165,6 +165,7 @@ func calculateDistanceSA(disanceMat [][]float64, route []int) float64 {
 }
 
 func swapReverseSA(route []int, tourPosOne int, tourPosTwo int) {
+	// reverse mutation yang di algoritma genetika utk permutation problem
 	var reversedRoute = make([]int, len(route))
 	copy(reversedRoute, route)
 	reversedRoute = reversedRoute[tourPosOne : tourPosOne+tourPosTwo]

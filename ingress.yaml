@@ -13,13 +13,13 @@ spec:
   - host: ""
     http:
       paths:
-        - path: /fts(/|$)(.*)
-          pathType: ImplementationSpecific
-          backend:
-            service:
-              name:  indonews-fts
-              port:
-                number: 5000
+        # - path: /fts(/|$)(.*)
+        #   pathType: ImplementationSpecific
+        #   backend:
+        #     service:
+        #       name:  indonews-fts
+        #       port:
+        #         number: 5000
         - path: /nginx(/|$)(.*)
           pathType: ImplementationSpecific
           backend:
