@@ -127,7 +127,34 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 		ways = append(ways, streets...)
 		closer.Close()
 	}
+
+	for lev := 2; lev <= 10; lev++ {
+		if len(ways) == 0 {
+			cells := h3.GridDisk(cell, lev)
+			for _, currCell := range cells {
+				if currCell == cell {
+					continue
+				}
+				val, closer, err := k.db.Get([]byte(currCell.String()))
+				if closer == nil || err != nil {
+					continue
+				}
+
+				streets, err := LoadWay(val)
+				if err != nil {
+					return []SurakartaWay{}, err
+				}
+				ways = append(ways, streets...)
+				closer.Close()
+			}
+		}else {
+			break
+		}
+
+	}
+
 	if len(ways) == 0 {
+
 		return []SurakartaWay{}, fmt.Errorf("tidak ada jalan di sekitar lokasi")
 	}
 
