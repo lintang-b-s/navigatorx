@@ -35,8 +35,8 @@ var (
 //	@contact.name	lintang birda saputra
 //	@description 	simple openstreetmap routing engine in go. Using Contraction Hierarchies for preprocessing and Bidirectioanl Dijkstra for shortest path query
 
-//	@license.name	Apache 2.0
-//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+//	@license.name	GNU Affero General Public License v3.0
+//	@license.url	https://www.gnu.org/licenses/gpl-3.0.en.html
 
 // @host		localhost:5000
 // @BasePath	/api
@@ -66,12 +66,12 @@ func main() {
 
 	r.Use(api.PromeHttpMiddleware(m)) // prometheus http middleware
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"https://*", "http://*"},
+		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
-		MaxAge:           300, 
+		MaxAge:           300,
 	}))
 	r.Mount("/debug", middleware.Profiler())
 

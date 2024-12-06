@@ -36,6 +36,7 @@ type NavigationService interface {
 	ManyToManyQuery(ctx context.Context, sourcesLat, sourcesLon, destsLat, destsLon []float64) map[alg.Coordinate][]service.TargetResult
 
 	TravelingSalesmanProblemSimulatedAnneal(ctx context.Context, citiesLat []float64, citiesLon []float64) ([]alg.Coordinate, string, float64, float64)
+	WeightedBipartiteMatching(ctx context.Context, riderLatLon map[string][]float64, driverLatLon map[string][]float64) (map[string]map[string]float64, float64, error)
 }
 
 type NavigationHandler struct {
@@ -54,6 +55,7 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService, m *metrics) {
 			r.Post("/map-matching", handler.HiddenMarkovModelMapMatching)
 			r.Post("/many-to-many", handler.ManyToManyQuery)
 			r.Post("/tsp", handler.TravelingSalesmanProblemSimulatedAnnealing)
+			r.Post("/matching", handler.WeightedBipartiteMatching)
 		})
 	})
 }
@@ -431,7 +433,6 @@ func (h *NavigationHandler) ManyToManyQuery(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	
 	sourcesLat, sourcesLon, destsLat, destsLon := []float64{}, []float64{}, []float64{}, []float64{}
 	for _, s := range data.Sources {
 		sourcesLat = append(sourcesLat, s.Lat)
@@ -550,6 +551,85 @@ func RenderTravelingSalesmanProblemResponse(path string, dist float64, eta float
 		Dist:   dist,
 		ETA:    eta,
 		Cities: cities,
+	}
+}
+
+// WeightedBipartiteMatching
+// WeightedBipartiteMatchingRequest model info
+//
+//	@Description	request body untuk rider driver matching (weighted bipartite matching) query
+type WeightedBipartiteMatchingRequest struct {
+	RiderLatLon  map[string]Coord `json:"rider_lat_lon" validate:"required,dive"`
+	DriverLatLon map[string]Coord `json:"driver_lat_lon" validate:"required,dive"`
+}
+
+func (s *WeightedBipartiteMatchingRequest) Bind(r *http.Request) error {
+	if len(s.DriverLatLon) < 1 || len(s.RiderLatLon) < 1 {
+		return errors.New("invalid request")
+	}
+	return nil
+}
+
+// WeightedBipartiteMatchingResponse model info
+//
+//	@Description	response body untuk rider driver matching query
+type WeightedBipartiteMatchingResponse struct {
+	Match    map[string]map[string]float64 `json:"match"`
+	TotalETA float64                       `json:"total_eta"`
+}
+
+// WeightedBipartiteMatching
+//
+//	@Summary		query weighted bipartite matching. Misalnya, untuk assign beberapa rider ke driver di suatu area secara optimal (untuk backend aplikasi ride hailing).
+//	@Description	query weighted bipartite matching. Misalnya, untuk assign beberapa rider ke driver di suatu area secara optimal (untuk backend aplikasi ride hailing).
+//	@Tags			navigations
+//	@Param			body	body	WeightedBipartiteMatchingRequest	true	"request body query weighted bipartite matching"
+//	@Accept			application/json
+//	@Produce		application/json
+//	@Router			/navigations/matching [post]
+//	@Success		200	{object}	WeightedBipartiteMatchingResponse
+//	@Failure		400	{object}	ErrResponse
+//	@Failure		500	{object}	ErrResponse
+func (h *NavigationHandler) WeightedBipartiteMatching(w http.ResponseWriter, r *http.Request) {
+	data := &WeightedBipartiteMatchingRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	riderLatLon, driverLatLon := map[string][]float64{}, map[string][]float64{}
+	for k, v := range data.RiderLatLon {
+		riderLatLon[k] = []float64{v.Lat, v.Lon}
+	}
+	for k, v := range data.DriverLatLon {
+		driverLatLon[k] = []float64{v.Lat, v.Lon}
+	}
+
+	match, totalEta, err := h.svc.WeightedBipartiteMatching(r.Context(), riderLatLon, driverLatLon)
+	if err != nil {
+		render.Render(w, r, ErrChi(err))
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, RenderWeightedBipartiteMatchingResponse(match, totalEta))
+}
+
+func RenderWeightedBipartiteMatchingResponse(match map[string]map[string]float64 , totalEta float64) *WeightedBipartiteMatchingResponse {
+	return &WeightedBipartiteMatchingResponse{
+		Match: match,
+		TotalETA: totalEta,
 	}
 }
 

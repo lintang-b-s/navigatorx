@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "129c6f33-7fe7-4ce9-9c2f-f4e349939876",
+		"_postman_id": "65e0c6ef-96d1-4e4f-9ca5-c1c6da6facf4",
 		"name": "navigator lintangbs",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "30538133",
-		"_collection_link": "https://orange-comet-51695.postman.co/workspace/netflik~35c0e208-27dd-4c2a-a67f-44e4ee221c8b/collection/30538133-129c6f33-7fe7-4ce9-9c2f-f4e349939876?action=share&source=collection_link&creator=30538133"
+		"_exporter_id": "30538133"
 	},
 	"item": [
 		{
@@ -236,6 +235,36 @@
 						"api",
 						"navigations",
 						"map-matching"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "rider-driver matching",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"rider_lat_lon\": {\n        \"rider1\": {\n            \"lat\": -7.767684016779731,\n            \"lon\":  110.37649557875707\n        },\n        \"rider2\": {\n            \"lat\": -7.770534977253453,\n            \"lon\":   110.38156022914536\n        },\n        \"rider3\": {\n            \"lat\": -7.758553228167311,\n            \"lon\":  110.39946726179075\n        },\n        \"rider4\": {\n            \"lat\": -7.801196956754633,\n            \"lon\":  110.36672004587915\n        },\n        \"rider5\": {\n            \"lat\": -7.687706141646555,\n            \"lon\": 110.41843469922163\n        },\n        \"rider6\": {\n            \"lat\": -7.556714132377571,\n            \"lon\":  110.80520610633097\n        },\n        \"rider7\": {\n            \"lat\": -7.561717618835495, \n            \"lon\": 110.80992968611694\n        }\n    },\n    \"driver_lat_lon\": {\n        \"driver1\": {\n            \"lat\": -7.573553087300021, \n            \"lon\": 110.82073100556183\n        },\n        \"driver2\": {\n            \"lat\": -7.571130061786068,\n            \"lon\":  110.80391906353825\n        },\n        \"driver3\": {\n            \"lat\": -7.782514997952533, \n            \"lon\": 110.36659498380173\n        },\n        \"driver4\": {\n            \"lat\": -7.781478644687624,\n            \"lon\":  110.37267965620099\n        },\n        \"driver5\": {\n            \"lat\": -7.772515329567074, \n            \"lon\": 110.37239634189628\n        },\n        \"driver6\": {\n            \"lat\": -7.755970087727186,\n            \"lon\": 110.37634415191656\n        },\n        \"driver7\": {\n            \"lat\": -7.764707027042284,\n            \"lon\":  110.39259158173417\n        }\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/navigations/matching",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"navigations",
+						"matching"
 					]
 				}
 			},

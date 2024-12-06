@@ -13,7 +13,7 @@ type Job[T JobI] struct {
 	JobItem T
 }
 
-// ngasal wkwk
+
 type WorkerPool[T JobI, G any] struct {
 	numWorkers int
 	jobQueue   chan T

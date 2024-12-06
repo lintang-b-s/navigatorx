@@ -21,7 +21,7 @@ func (ch *ContractedGraph) callBidirectionalDijkstra(spMap []int32) SPSingleResu
 	var dist float64
 	path, eta, dist = ch.ShortestPathBiDijkstra(spMap[0], spMap[1])
 
-	return SPSingleResultResult{spMap[0], spMap[1], path, eta, dist}
+	return SPSingleResultResult{spMap[0], spMap[1], path, dist, eta}
 }
 
 func (ch *ContractedGraph) ShortestPathManyToManyBiDijkstraWorkers(from []int32, to []int32) map[int32]map[int32]SPSingleResultResult {

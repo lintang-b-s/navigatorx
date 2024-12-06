@@ -3,6 +3,7 @@ package alg
 import (
 	"fmt"
 	"log"
+	"math"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/k0kubun/go-ansi"
@@ -98,6 +99,7 @@ func (k *KVDB) SaveWay(wayItem SaveWayJobItem) interface{} {
 	return nil
 }
 
+// GetNearestStreetsFromPointCoord buat road snaping. Untuk menentukan jalan-jalan yang paling dekat dengan titik start/end rute yang di tunjuk sama pengguna
 func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay, error) {
 	ways := []SurakartaWay{}
 
@@ -107,10 +109,13 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 	if err == nil {
 		defer closer.Close()
 	}
-	streets, err := LoadWay(val)
+
+	streets, _ := LoadWay(val)
+
 	ways = append(ways, streets...)
 
-	cells := h3.GridDisk(cell, 1)
+	// cells := h3.GridDisk(cell, 1)
+	cells := kRingIndexesArea(lat, lon, 1) // search cell neighbor dari homeCell yang radius nya 1 km 
 	for _, currCell := range cells {
 		if currCell == cell {
 			continue
@@ -128,6 +133,7 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 		closer.Close()
 	}
 
+	// kalau dari radius 1 km dari titik start/end rute pengguna gak ada jalan (misal di bandara, hutan, dll). maka cari jalan dari neighbor h3 cell yang lebih jauh dari titik start/end rute
 	for lev := 2; lev <= 10; lev++ {
 		if len(ways) == 0 {
 			cells := h3.GridDisk(cell, lev)
@@ -147,10 +153,7 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 				ways = append(ways, streets...)
 				closer.Close()
 			}
-		}else {
-			break
 		}
-
 	}
 
 	if len(ways) == 0 {
@@ -158,7 +161,32 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 		return []SurakartaWay{}, fmt.Errorf("tidak ada jalan di sekitar lokasi")
 	}
 
-	return ways, err
+	return ways, nil
+}
+
+
+
+/*
+*
+  - https://observablehq.com/@nrabinowitz/h3-radius-lookup?collection=@nrabinowitz/h3
+    search cell neighbor dari cell dari lat,lon  yang radius nya = searchRadiusKm
+*/
+func kRingIndexesArea(lat, lon, searchRadiusKm float64) []h3.Cell {
+	home := h3.NewLatLng(lat, lon)
+	origin := h3.LatLngToCell(home, 9)
+	originArea := h3.CellAreaKm2(origin)
+	searchArea := math.Pi * searchRadiusKm * searchRadiusKm
+
+	radius := 0
+	diskArea := originArea
+
+	for diskArea < searchArea {
+		radius++
+		cellCount := float64(3*radius*(radius+1) + 1)
+		diskArea = cellCount * originArea
+	}
+
+	return h3.GridDisk(origin, radius)
 }
 
 func (k *KVDB) Close() {

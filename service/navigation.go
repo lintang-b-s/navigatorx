@@ -4,6 +4,7 @@ import (
 	"context"
 	"lintang/navigatorx/alg"
 	"lintang/navigatorx/types"
+	"sort"
 	"sync"
 )
 
@@ -17,6 +18,7 @@ type ContractedGraph interface {
 	ShortestPathManyToManyBiDijkstra(from int32, to []int32) ([][]alg.CHNode2, []float64, []float64)
 	ShortestPathManyToManyBiDijkstraWorkers(from []int32, to []int32) map[int32]map[int32]alg.SPSingleResultResult
 	TravelingSalesmanProblemSimulatedAnnealing(cities []int32) ([]alg.CHNode2, float64, float64, [][]float64)
+	CreateDistMatrix(spPair [][]int32) map[int32]map[int32]alg.SPSingleResultResult
 	IsChReady() bool
 }
 
@@ -447,4 +449,89 @@ func (uc *NavigationService) NearestStreetNodesForMapMatching(lat, lon float64) 
 		return []alg.State{}, err
 	}
 	return streetNodes, nil
+}
+
+// WeightedBipartiteMatching solve rider driver matching secara optimal
+// @riderLatLon: latitude, longitude setiap rider
+func (uc *NavigationService) WeightedBipartiteMatching(ctx context.Context, riderLatLon map[string][]float64, driverLatLon map[string][]float64) (match map[string]map[string]float64, totEta float64, err error) {
+	riderLen := len(riderLatLon)
+	distMatrix := make([][]float64, riderLen)
+	for i := range distMatrix {
+		distMatrix[i] = make([]float64, len(driverLatLon))
+	}
+	riderKeys := make([]string, 0)
+	driverKeys := make([]string, 0)
+
+	for k, _ := range driverLatLon {
+		driverKeys = append(driverKeys, k)
+	}
+	for k, _ := range riderLatLon {
+		riderKeys = append(riderKeys, k)
+	}
+	sort.Strings(riderKeys)
+	sort.Strings(driverKeys)
+	spPair := [][]int32{}
+
+	riderNodeIDMap := make(map[string]int32)
+	driverNodeIDMap := make(map[string]int32)
+	for _, riderKey := range riderKeys {
+		riderNodeIDMap[riderKey], err = uc.NodeFinder(riderLatLon[riderKey][0], riderLatLon[riderKey][1])
+		if err != nil {
+			return nil, 0.0, err
+		}
+	}
+
+	for _, driverKey := range driverKeys {
+		driverNodeIDMap[driverKey], err = uc.NodeFinder(driverLatLon[driverKey][0], driverLatLon[driverKey][1])
+		if err != nil {
+			return nil, 0.0, err
+		}
+	}
+
+	for _, riderKey := range riderKeys {
+		// harus disort driverLatLon nya by key. soalnya setiap iterasi beda urutannya (bukan ordered_map di c++).
+		for _, driverKey := range driverKeys {
+			src := riderNodeIDMap[riderKey]
+			dest := driverNodeIDMap[driverKey]
+
+			spPair = append(spPair, []int32{src, dest})
+		}
+	}
+
+	distMatPair := uc.CH.CreateDistMatrix(spPair)
+	for i := 0; i < len(riderKeys); i++ {
+		for j := 0; j < len(driverKeys); j++ {
+			distMatrix[i][j] = distMatPair[riderNodeIDMap[riderKeys[i]]][driverNodeIDMap[driverKeys[j]]].Eta
+		}
+	}
+
+	totEta, matchInt, err := alg.Hungarian(distMatrix)
+	if err != nil {
+		err = types.WrapErrorf(err, types.ErrBadParamInput, "rider and driver location input cannot be empty!")
+		return
+	}
+
+	match = make(map[string]map[string]float64)
+	for rider, driver := range matchInt {
+		if _, ok := match[riderKeys[rider]]; !ok {
+			match[riderKeys[rider]] = make(map[string]float64)
+		}
+		match[riderKeys[rider]][driverKeys[driver]] = distMatrix[rider][driver]
+	}
+	return
+}
+
+func (uc *NavigationService) NodeFinder(srcLat, srcLon float64) (int32, error) {
+	from := &alg.Node{
+		Lat: srcLat,
+		Lon: srcLon,
+	}
+
+	var err error
+	fromSurakartaNode, err := uc.SnapLocToStreetNode(from.Lat, from.Lon)
+	if err != nil {
+		return 0, types.WrapErrorf(err, types.ErrNotFound, "sorry!! lokasi yang anda masukkan tidak tercakup di peta saya :(")
+	}
+
+	return fromSurakartaNode, nil
 }

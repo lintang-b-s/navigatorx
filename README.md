@@ -55,7 +55,8 @@ Note: Source & Destination Coordinates must be around Yogyakarta Province/Suraka
 ```
 
 ### Hidden Markov Map Matching
-snap driver trip GPS traces on map street data. 
+
+snap driver trip GPS traces on map street data.
 based on https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
 
 ```
@@ -115,6 +116,78 @@ curl --location 'http://localhost:5000/api/navigations/tsp' \
 }'
 Note:  "cities_coord" must be a place around the province of Yogyakarta/Surakarta/Klaten if using OpenStreetMap data in the setup step
 3.  Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Check Unsescape '\'. The shortest (suboptimal) TSP route will be displayed on the map. :)
+```
+
+### Rider-Driver Matchmaking Using Hungarian Algorithm
+```
+1. Wait until Contraction Hierarchies preprocessing is complete
+2. request to matchmaking api
+curl --location 'http://localhost:5000/api/navigations/matching' \
+--header 'Content-Type: application/json' \
+--data '{
+    "rider_lat_lon": {
+        "rider1": {
+            "lat": -7.767684016779731,
+            "lon":  110.37649557875707
+        },
+        "rider2": {
+            "lat": -7.770534977253453,
+            "lon":   110.38156022914536
+        },
+        "rider3": {
+            "lat": -7.758553228167311,
+            "lon":  110.39946726179075
+        },
+        "rider4": {
+            "lat": -7.801196956754633,
+            "lon":  110.36672004587915
+        },
+        "rider5": {
+            "lat": -7.687706141646555,
+            "lon": 110.41843469922163
+        },
+        "rider6": {
+            "lat": -7.556714132377571,
+            "lon":  110.80520610633097
+        },
+        "rider7": {
+            "lat": -7.561717618835495, 
+            "lon": 110.80992968611694
+        }
+    },
+    "driver_lat_lon": {
+        "driver1": {
+            "lat": -7.573553087300021, 
+            "lon": 110.82073100556183
+        },
+        "driver2": {
+            "lat": -7.571130061786068,
+            "lon":  110.80391906353825
+        },
+        "driver3": {
+            "lat": -7.782514997952533, 
+            "lon": 110.36659498380173
+        },
+        "driver4": {
+            "lat": -7.781478644687624,
+            "lon":  110.37267965620099
+        },
+        "driver5": {
+            "lat": -7.772515329567074, 
+            "lon": 110.37239634189628
+        },
+        "driver6": {
+            "lat": -7.755970087727186,
+            "lon": 110.37634415191656
+        },
+        "driver7": {
+            "lat": -7.764707027042284,
+            "lon":  110.39259158173417
+        }
+    }
+}'
+
+3. The response is the most optimal rider-driver pair based on proximity (estimated arrival time from driver to rider). Solved using the Hungarian algorithm.
 ```
 
 ### Many to Many Shortest Path Query
