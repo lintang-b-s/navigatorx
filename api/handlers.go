@@ -37,6 +37,8 @@ type NavigationService interface {
 
 	TravelingSalesmanProblemSimulatedAnneal(ctx context.Context, citiesLat []float64, citiesLon []float64) ([]alg.Coordinate, string, float64, float64)
 	WeightedBipartiteMatching(ctx context.Context, riderLatLon map[string][]float64, driverLatLon map[string][]float64) (map[string]map[string]float64, float64, error)
+
+	TravelingSalesmanProblemAntColonyOptimization(ctx context.Context, citiesLat []float64, citiesLon []float64) ([]alg.Coordinate, string, float64, float64)
 }
 
 type NavigationHandler struct {
@@ -56,6 +58,8 @@ func NavigatorRouter(r *chi.Mux, svc NavigationService, m *metrics) {
 			r.Post("/many-to-many", handler.ManyToManyQuery)
 			r.Post("/tsp", handler.TravelingSalesmanProblemSimulatedAnnealing)
 			r.Post("/matching", handler.WeightedBipartiteMatching)
+			r.Post("/tsp_aco", handler.TravelingSalesmanProblemAntColonyOptimization)
+			r.Get("/hello", handler.Hello)
 		})
 	})
 }
@@ -539,7 +543,49 @@ func (h *NavigationHandler) TravelingSalesmanProblemSimulatedAnnealing(w http.Re
 		citiesLon = append(citiesLon, c.Lon)
 	}
 
-	tspTourNodes, path, dist, eta := h.svc.TravelingSalesmanProblemSimulatedAnneal(r.Context(), citiesLat, citiesLon)
+	tspTourNodes, path, eta, dist := h.svc.TravelingSalesmanProblemSimulatedAnneal(r.Context(), citiesLat, citiesLon)
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, RenderTravelingSalesmanProblemResponse(path, dist, eta, tspTourNodes))
+}
+
+// TravelingSalesmanProblemAntColonyOptimization
+//
+//	@Summary		query traveling salesman problem pakai ant colony optimization. Shortest path untuk rute mengunjungi beberapa tempat tepat sekali dan kembali ke tempat asal
+//	@Description	query traveling salesman problem pakai ant colony optimization. Shortest path untuk rute mengunjungi beberapa tempat tepat sekali dan kembali ke tempat asal
+//	@Tags			navigations
+//	@Param			body	body	TravelingSalesmanProblemRequest	true	"request body query tsp"
+//	@Accept			application/json
+//	@Produce		application/json
+//	@Router			/navigations/tsp [post]
+//	@Success		200	{object}	TravelingSalesmanProblemResponse
+//	@Failure		400	{object}	ErrResponse
+//	@Failure		500	{object}	ErrResponse
+func (h *NavigationHandler) TravelingSalesmanProblemAntColonyOptimization(w http.ResponseWriter, r *http.Request) {
+	data := &TravelingSalesmanProblemRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(*data); err != nil {
+		english := en.New()
+		uni := ut.New(english, english)
+		trans, _ := uni.GetTranslator("en")
+		_ = enTranslations.RegisterDefaultTranslations(validate, trans)
+		vv := translateError(err, trans)
+		render.Render(w, r, ErrValidation(err, vv))
+		return
+	}
+
+	citiesLat, citiesLon := []float64{}, []float64{}
+	for _, c := range data.CitiesCoord {
+		citiesLat = append(citiesLat, c.Lat)
+		citiesLon = append(citiesLon, c.Lon)
+	}
+
+	tspTourNodes, path, eta, dist := h.svc.TravelingSalesmanProblemAntColonyOptimization(r.Context(), citiesLat, citiesLon)
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, RenderTravelingSalesmanProblemResponse(path, dist, eta, tspTourNodes))
@@ -626,11 +672,16 @@ func (h *NavigationHandler) WeightedBipartiteMatching(w http.ResponseWriter, r *
 	render.JSON(w, r, RenderWeightedBipartiteMatchingResponse(match, totalEta))
 }
 
-func RenderWeightedBipartiteMatchingResponse(match map[string]map[string]float64 , totalEta float64) *WeightedBipartiteMatchingResponse {
+func RenderWeightedBipartiteMatchingResponse(match map[string]map[string]float64, totalEta float64) *WeightedBipartiteMatchingResponse {
 	return &WeightedBipartiteMatchingResponse{
-		Match: match,
+		Match:    match,
 		TotalETA: totalEta,
 	}
+}
+
+func (h *NavigationHandler) Hello(w http.ResponseWriter, r *http.Request) {
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, "Hello, World!")
 }
 
 // ErrResponse model info

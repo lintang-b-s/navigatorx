@@ -19,6 +19,7 @@ type ContractedGraph interface {
 	ShortestPathManyToManyBiDijkstraWorkers(from []int32, to []int32) map[int32]map[int32]alg.SPSingleResultResult
 	TravelingSalesmanProblemSimulatedAnnealing(cities []int32) ([]alg.CHNode2, float64, float64, [][]float64)
 	CreateDistMatrix(spPair [][]int32) map[int32]map[int32]alg.SPSingleResultResult
+	TravelingSalesmanProblemAntColonyOptimization(cities []int32) ([]alg.CHNode2, float64, float64, [][]float64)
 	IsChReady() bool
 }
 
@@ -428,6 +429,25 @@ func (uc *NavigationService) TravelingSalesmanProblemSimulatedAnneal(ctx context
 	}
 
 	tspTourNodes, bestETA, bestDistance, bestTourCitiesOrder := uc.CH.TravelingSalesmanProblemSimulatedAnnealing(citiesID)
+	cititesTour := []alg.Coordinate{}
+	for i := 0; i < len(bestTourCitiesOrder); i++ {
+		cititesTour = append(cititesTour, alg.Coordinate{
+			Lat: bestTourCitiesOrder[i][0],
+			Lon: bestTourCitiesOrder[i][1],
+		})
+	}
+	return cititesTour, alg.RenderPath2(tspTourNodes), bestETA, bestDistance
+}
+
+func (uc *NavigationService) TravelingSalesmanProblemAntColonyOptimization(ctx context.Context, citiesLat []float64, citiesLon []float64) ([]alg.Coordinate, string, float64, float64) {
+
+	citiesID := []int32{}
+	for i := 0; i < len(citiesLat); i++ {
+		cityNode, _ := uc.SnapLocToStreetNode(citiesLat[i], citiesLon[i])
+		citiesID = append(citiesID, cityNode)
+	}
+
+	tspTourNodes, bestETA, bestDistance, bestTourCitiesOrder := uc.CH.TravelingSalesmanProblemAntColonyOptimization(citiesID)
 	cititesTour := []alg.Coordinate{}
 	for i := 0; i < len(bestTourCitiesOrder); i++ {
 		cititesTour = append(cititesTour, alg.Coordinate{

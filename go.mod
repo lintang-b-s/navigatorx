@@ -7,6 +7,7 @@ require (
 	github.com/cockroachdb/pebble v1.1.1
 	github.com/dhconnelly/rtreego v1.2.0
 	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/render v1.0.3
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
@@ -23,7 +24,6 @@ require (
 )
 
 require (
-	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 )

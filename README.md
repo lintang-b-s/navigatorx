@@ -69,7 +69,7 @@ Note:  GPS Coordinates must be around the Yogyakarta province/Surakarta city/Kla
 3. Copy the polyline string path of the response endpoint result to https://valhalla.github.io/demos/polyline . Centang Unsescape '\'. The map matching results in the form of a list of road network node coordinates will appear on the map. :)
 ```
 
-### Traveling Salesman Problem Using Simulated Annealing
+### Traveling Salesman Problem Using Simulated Annealing or Ant-Colony Optimization
 
 What is the shortest (suboptimal) route to visit UGM, UNY, UPNV Jogja, UII Jogja, IAIN Surakarta, UNS, UMS, and ISI Surakarta campuses exactly once and return to the original campus location?
 
@@ -77,6 +77,47 @@ What is the shortest (suboptimal) route to visit UGM, UNY, UPNV Jogja, UII Jogja
 1. Wait until Contraction Hierarchies preprocessing is complete
 2. request query traveling salesman problem
 curl --location 'http://localhost:5000/api/navigations/tsp' \
+--header 'Content-Type: application/json' \
+--data '{
+    "cities_coord": [
+        {
+            "lat": -7.773700556142326,
+            "lon": 110.37927594982729
+        },
+        {
+            "lat": -7.687798280189743,
+            "lon": 110.41397147030537
+        },
+        {
+            "lat": -7.773714842796234,
+            "lon": 110.38625612460329
+        },
+        {
+            "lat": -7.7620859704046135,
+            "lon": 110.40928883503045
+        },
+        {
+            "lat": -7.559256385020671,
+            "lon":  110.85624887436603
+        },
+        {
+            "lat": -7.558529640984029,
+            "lon": 110.73442218529993
+        },
+        {
+            "lat": -7.5579561088085665,
+            "lon":  110.85233572375333
+        },
+        {
+            "lat":  -7.557649260722883,
+            "lon": 110.77068956586514
+        }
+    ]
+}'
+
+or (use ant-colony optimization)
+
+curl --location 'http://localhost:5000/api/navigations/tsp_aco' \
 --header 'Content-Type: application/json' \
 --data '{
     "cities_coord": [
@@ -187,7 +228,7 @@ curl --location 'http://localhost:5000/api/navigations/matching' \
     }
 }'
 
-3. The response is the most optimal rider-driver pair based on proximity (estimated arrival time from driver to rider). Solved using the Hungarian algorithm.
+3. The response is the most optimal rider-driver pairs based on proximity (estimated arrival time from driver to rider). Solved using the Hungarian algorithm.
 ```
 
 ### Many to Many Shortest Path Query
@@ -259,14 +300,16 @@ Note:  "sources" and "targets" must be around the province of Yogyakarta/Surakar
 #### Theory / Ref
 
 ```
-- R. Geisberger, P. Sanders, D. Schultes, and D. Delling, “Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks,” in Experimental Algorithms, C. C. McGeoch, Ed., Berlin, Heidelberg: Springer, 2008, pp. 319–333. doi: 10.1007/978-3-540-68552-4_24.
--  “Hidden Markov Map Matching Through Noise and Sparseness - Microsoft Research.” Accessed: Oct. 24, 2024. [Online]. Available: https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
-- https://en.wikipedia.org/wiki/Simulated_annealing#:~:text=Simulated%20annealing%20(SA)%20is%20a,can%20find%20the%20global%20optimum.
-- https://jlazarsfeld.github.io/ch.150.project/sections/7-ch-overview/
-- https://www.uber.com/en-ID/blog/engineering-routing-engine/
-- https://www.uber.com/en-ID/blog/h3/
-- https://www.uber.com/blog/mapping-accuracy-with-catchme/
-- http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
+-  R. Geisberger, P. Sanders, D. Schultes, and D. Delling, “Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks,” in Experimental Algorithms, C. C. McGeoch, Ed., Berlin, Heidelberg: Springer, 2008, pp. 319–333. doi: 10.1007/978-3-540-68552-4_24.
+-   “Hidden Markov Map Matching Through Noise and Sparseness - Microsoft Research.” Accessed: Oct. 24, 2024. [Online]. Available: https://www.microsoft.com/en-us/research/publication/hidden-markov-map-matching-noise-sparseness/
+-  “Ant colony optimization | IEEE Journals & Magazine | IEEE Xplore.” Accessed: Dec. 08, 2024. [Online]. Available: https://ieeexplore-ieee-org.ezproxy.ugm.ac.id/document/4129846
+-  https://en.wikipedia.org/wiki/Hungarian_algorithm
+-  https://en.wikipedia.org/wiki/Simulated_annealing#:~:text=Simulated%20annealing%20(SA)%20is%20a,can%20find%20the%20global%20optimum.
+-  https://jlazarsfeld.github.io/ch.150.project/sections/7-ch-overview/
+-  https://www.uber.com/en-ID/blog/engineering-routing-engine/
+-  https://h3geo.org/
+-  https://www.uber.com/blog/mapping-accuracy-with-catchme/
+-  http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
 ```
 
 go build -gcflags "-m -l" \*.go

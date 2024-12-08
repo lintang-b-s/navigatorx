@@ -30,7 +30,6 @@ func padMatrix(matrix [][]float64) {
 }
 
 // step1 For each row, its minimum element is subtracted from every element in that row.
-//
 //	the minimum element in each column is subtracted from all the elements in that column
 func step1(matrix [][]float64, step *int) {
 
@@ -289,7 +288,7 @@ func findSmallest(matrix [][]float64, RowCover, ColCover []int) float64 {
 }
 
 /*
-Otherwise, find the lowest uncovered value. Subtract this from every unmarked element and add it to every element covered by two lines. Go back to step 4.
+step6 Otherwise, find the lowest uncovered value. Subtract this from every unmarked element and add it to every element covered by two lines. Go back to step 4.
 */
 func step6(matrix [][]float64, RowCover, ColCover []int, step *int) {
 	minval := findSmallest(matrix, RowCover, ColCover)
@@ -319,6 +318,7 @@ func outputSolution(original [][]float64, M [][]int) float64 {
 	return res
 }
 
+// Hungarian solve rider-driver matchmaking pakai algoritma hungarian.
 func Hungarian(original [][]float64) (float64, map[int]int, error) {
 	if len(original) == 0 || len(original[0]) == 0 {
 		return 0, map[int]int{}, errors.New("empty matrix")

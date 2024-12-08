@@ -103,7 +103,7 @@ func (ch *ContractedGraph) TravelingSalesmanProblemSimulatedAnnealing(cities []i
 		}
 	}
 
-	workers := NewWorkerPool[[]int32, SPSingleResultResult](3, len(spPair))
+	workers := NewWorkerPool[[]int32, SPSingleResultResult](10, len(spPair))
 
 	for i := 0; i < len(spPair); i++ {
 		workers.AddJob(spPair[i])
@@ -141,16 +141,13 @@ func (ch *ContractedGraph) TravelingSalesmanProblemSimulatedAnnealing(cities []i
 	bestTour, bestETA := saTSP.Solve() // solve tsp pake simulated annealing
 	tspTourNodes := []CHNode2{}
 	bestDistance := 0.0
-	for i := 0; i < len(bestTour)-1; i++ {
+	for i := 0; i < len(bestTour); i++ {
 
-		currPathNodes := spMap[cities[bestTour[i]]][cities[bestTour[i+1]]].Paths
-		bestDistance += spMap[cities[bestTour[i]]][cities[bestTour[i+1]]].Dist
+		currPathNodes := spMap[cities[bestTour[i]]][cities[bestTour[(i+1)%len(bestTour)]]].Paths
+		bestDistance += spMap[cities[bestTour[i]]][cities[bestTour[(i+1)%len(bestTour)]]].Dist
 		bestTourCitiesLatLon = append(bestTourCitiesLatLon, []float64{ch.ContractedNodes[cities[bestTour[i]]].Lat, ch.ContractedNodes[cities[bestTour[i]]].Lon})
 		tspTourNodes = append(tspTourNodes, currPathNodes...)
 	}
-	bestTourCitiesLatLon = append(bestTourCitiesLatLon, []float64{ch.ContractedNodes[cities[bestTour[len(bestTour)-1]]].Lat,
-		ch.ContractedNodes[cities[bestTour[len(bestTour)-1]]].Lon})
-	tspTourNodes = append(tspTourNodes, spMap[cities[bestTour[len(bestTour)-1]]][cities[bestTour[0]]].Paths...) // dari end tour ke start tour
 
 	return tspTourNodes, bestETA, bestDistance, bestTourCitiesLatLon
 }

@@ -115,7 +115,7 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 	ways = append(ways, streets...)
 
 	// cells := h3.GridDisk(cell, 1)
-	cells := kRingIndexesArea(lat, lon, 1) // search cell neighbor dari homeCell yang radius nya 1 km 
+	cells := kRingIndexesArea(lat, lon, 1) // search cell neighbor dari homeCell yang radius nya 1 km
 	for _, currCell := range cells {
 		if currCell == cell {
 			continue
@@ -153,6 +153,8 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 				ways = append(ways, streets...)
 				closer.Close()
 			}
+		} else {
+			break
 		}
 	}
 
@@ -163,8 +165,6 @@ func (k *KVDB) GetNearestStreetsFromPointCoord(lat, lon float64) ([]SurakartaWay
 
 	return ways, nil
 }
-
-
 
 /*
 *
