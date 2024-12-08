@@ -1,0 +1,3 @@
+POST http://localhost:5000/api/navigations/shortest-path
+Content-Type: application/json
+@data.json

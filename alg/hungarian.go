@@ -226,7 +226,7 @@ func erasePrimes(M [][]int) {
 }
 
 /*
-Substep 1: Find a starred zero on the corresponding column. If there is one, go to Substep 2, else, stop.
+step5 Substep 1: Find a starred zero on the corresponding column. If there is one, go to Substep 2, else, stop.
 
 			Substep 2: Find a primed zero on the corresponding row (there should always be one). Go to Substep 1.
 
