@@ -497,14 +497,14 @@ func (uc *NavigationService) WeightedBipartiteMatching(ctx context.Context, ride
 	for _, riderKey := range riderKeys {
 		riderNodeIDMap[riderKey], err = uc.NodeFinder(riderLatLon[riderKey][0], riderLatLon[riderKey][1])
 		if err != nil {
-			return nil, 0.0, err
+			return
 		}
 	}
 
 	for _, driverKey := range driverKeys {
 		driverNodeIDMap[driverKey], err = uc.NodeFinder(driverLatLon[driverKey][0], driverLatLon[driverKey][1])
 		if err != nil {
-			return nil, 0.0, err
+			return
 		}
 	}
 

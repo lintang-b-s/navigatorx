@@ -1,0 +1,35 @@
+dari: https://www.youtube.com/watch?v=N3PWzBeLX2M
+
+vegeta attack -rate=1000 -duration=1000s  -targets vegeta_target.txt   | vegeta report
+
+ go tool pprof --seconds 5 http://localhost:5000/debug/pprof/profile
+
+```
+top10
+
+top10 -cum
+
+web
+```
+
+ go tool pprof \
+  -raw -output=cpu.txt \
+  'http://localhost:5000/debug/pprof/profile?seconds=20'
+
+
+
+===== FlameGraph =====
+- buat tau function call mana yang paling lemot
+
+go tool pprof \
+-raw -output=cpu.txt \
+'http://localhost:5000/debug/pprof/profile?seconds=20'
+
+./stackcollapse-go.pl cpu.txt | ./flamegraph.pl > flame.svg
+
+open flame.svg
+
+TODO: ganti cara simpan openstreetmap ways. gob.decode 38% 
+- mungkin ganti pakai buffer []byte, terus serialize setiap field objects []SurakartaWay secara urut pakai binary.LittleEndian.PutUint64() & masukkin ke buffer?
+- deserialize tinggal urutannya dibalik?  mirip kaya serialize node b-tree di database.
+
