@@ -1,4 +1,3 @@
-# coba pake alpine gabisa
 FROM debian:bookworm-slim as builder
 RUN apt-get update
 RUN apt-get install -y wget libzstd-dev  build-essential
@@ -11,8 +10,5 @@ COPY . /app
 WORKDIR /app
 ENV PATH="/usr/local/go/bin:${PATH}"
 # uber h3 & zstd butuh cgo 
-RUN  CGO_ENABLED=1 GOOS=linux   go build -o  /bin/app  ./cmd/auto
-RUN  wget --no-check-certificate "https://docs.google.com/uc?export=download&id=$DRIVE_FILE_ID" -O /app/$MAP_FILE.osm.pbf
-CMD ["sh", "-c", "/bin/app", "-f=/app/$MAP_FILE.osm.pbf"] 
-
-
+RUN  CGO_ENABLED=1 GOOS=linux   go build -o /bin/app  ./cmd/engine
+CMD ["sh", "-c", "/bin/app", "-f="] 

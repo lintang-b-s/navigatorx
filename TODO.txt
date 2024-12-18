@@ -1,0 +1,5 @@
+
+- tambahin alternativeRoutes pakai algo yang dijelasin di: https://renatowerneck.wordpress.com/wp-content/uploads/2016/06/adgw13-alternatives.pdf
+- tambahin vrp dan variannya solver pakai genetic algorithm.
+- add customizable route planning, biar edge graphnya bisa menyesuaikan data traffic : https://link.springer.com/chapter/10.1007/978-3-642-20662-7_32
+- push docker image preprocessing & server ke dockerhub.

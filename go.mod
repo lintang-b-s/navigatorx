@@ -14,6 +14,7 @@ require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
+	github.com/kelindar/binary v1.0.19
 	github.com/paulmach/osm v0.8.0
 	github.com/schollz/progressbar/v3 v3.14.6
 	github.com/stretchr/testify v1.9.0

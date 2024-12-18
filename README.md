@@ -1,6 +1,6 @@
 # navigatorx
 
-Simple Openstreetmap routing engine in go. This project uses Contraction Hierarchies to speed up shortest path queries by preprocessing the road network graph (adding many shortcut edges) and Bidirectional Dijsktra for shortest path queries. H3 is used as a nearest neighbor query.
+Simple Openstreetmap routing engine in go. This project uses Contraction Hierarchies to speed up shortest path queries by preprocessing the road network graph (adding many shortcut edges) and Bidirectional Dijsktra for shortest path queries. H3 is used as a nearest neighbor query. For route optimization, currently only TSP is supported, in the future VRP and its variants will be added. Currently it is still not possible to customize based on traffic data.
 
 ## Quick Start
 
@@ -11,18 +11,43 @@ Simple Openstreetmap routing engine in go. This project uses Contraction Hierarc
 2. wait for preprocessing contraction hierarchies to complete (about 3 minutes) [you can check it with 'docker logs navigatorx -f', wait until the text 'Contraction Hierarchies + Bidirectional Dijkstra Ready!!' appears  ]
 ```
 
-#### Local
+#### Local (Preprocess + Server)
 
 ```
 1. download the jogja & solo openstreetmap pbf file at: https://drive.google.com/file/d/1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO/view?usp=sharing
 Note: or you can also use another openstreetmap file with the osm.pbf format (https://download.geofabrik.de/)
 2.  put the download results into the root directory of this project
 3.  go mod tidy &&  mkdir bin
-4. CGO_ENABLED=1  go build -o ./bin/navigatorx .
+4. CGO_ENABLED=1  go build -o ./bin/navigatorx ./cmd/auto
 5. ./bin/navigatorx
 (Minimum free RAM 1 GB for the above data)
 note: or you can also do it with "make run"
 5.  wait for preprocessing contraction hierarchies to complete (about 3 minutes)
+```
+
+#### Only Preprocessing
+
+```
+1. download the jogja & solo openstreetmap pbf file at: https://drive.google.com/file/d/1pEHN8wwUbB5XpuYMZm141fXQ_ZsIf4CO/view?usp=sharing
+Note: or you can also use another openstreetmap file with the osm.pbf format (https://download.geofabrik.de/)
+2.  put the download results into the root directory of this project
+3.  go mod tidy &&  mkdir bin
+4. CGO_ENABLED=1  go build -o ./bin/navigatorx-preprocessing ./cmd/preprocessing
+Note: to replace the openstreetmap file, see the instructions below
+5. ./bin/navigatorx-preprocessing
+(Minimum free RAM 1 GB for the above data)
+5.  wait for preprocessing contraction hierarchies to complete (about 3 minutes)
+```
+
+### Only Server
+
+Make sure you have done the preprocessing stage above!
+
+```
+
+1. CGO_ENABLED=1  go build -o ./bin/navigatorx-engine ./cmd/engine
+2. ./bin/navigatorx-engine
+(Minimum free RAM 1 GB for the above data)
 ```
 
 #### Change Map Data
@@ -44,10 +69,10 @@ note: or you can also do it with "make run"
 curl --location 'http://localhost:5000/api/navigations/shortest-path' \
 --header 'Content-Type: application/json' \
 --data '{
-    "src_lat": -7.550261232598317,
-    "src_lon":    110.78210790296636,
-    "dst_lat": -8.024431446370416,
-    "dst_lon":   110.32971396395838
+  "src_lat":  -7.550263588614922,
+    "src_lon":     110.78206617571915,
+    "dst_lat": -8.024167150460844,
+    "dst_lon":   110.32986653162467
 }'
 
 Note: Source & Destination Coordinates must be around Yogyakarta Province/Surakarta City/Klaten if using OpenStreetMap data in the setup step
@@ -160,72 +185,187 @@ Note:  "cities_coord" must be a place around the province of Yogyakarta/Surakart
 ```
 
 ### Rider-Driver Matchmaking Using Hungarian Algorithm
+
 ```
 1. Wait until Contraction Hierarchies preprocessing is complete
 2. request to matchmaking api
 curl --location 'http://localhost:5000/api/navigations/matching' \
 --header 'Content-Type: application/json' \
 --data '{
-    "rider_lat_lon": {
-        "rider1": {
-            "lat": -7.767684016779731,
-            "lon":  110.37649557875707
+    "rider_lat_lon": [
+        {
+            "username": "rider1",
+            "coord": {
+                "lat": -7.767684016779731,
+                "lon":  110.37649557875707
+            }
         },
-        "rider2": {
-            "lat": -7.770534977253453,
-            "lon":   110.38156022914536
+        {
+            "username": "rider2",
+            "coord": {
+                "lat": -7.770534977253453,
+                "lon":   110.38156022914536
+            }
+        }, 
+        {
+        "username":  "rider3",
+        "coord": {
+                "lat": -7.758553228167311,
+                "lon":  110.39946726179075
+            }
+        }, 
+        {
+            "username": "rider4",
+            "coord": {
+                "lat": -7.801196956754633,
+                "lon":  110.36672004587915
+            }
         },
-        "rider3": {
-            "lat": -7.758553228167311,
-            "lon":  110.39946726179075
+        {
+            "username": "rider5",
+            "coord": {
+                "lat": -7.687706141646555,
+                "lon": 110.41843469922163
+            }
         },
-        "rider4": {
-            "lat": -7.801196956754633,
-            "lon":  110.36672004587915
-        },
-        "rider5": {
-            "lat": -7.687706141646555,
-            "lon": 110.41843469922163
-        },
-        "rider6": {
-            "lat": -7.556714132377571,
-            "lon":  110.80520610633097
-        },
-        "rider7": {
+       {
+        "username": "rider6",
+        "coord": {
+                "lat": -7.556714132377571,
+                "lon":  110.80520610633097
+            }
+       },
+       {
+        "username": "ridersolo7",
+       "coord": {
             "lat": -7.561717618835495, 
             "lon": 110.80992968611694
         }
-    },
-    "driver_lat_lon": {
-        "driver1": {
-            "lat": -7.573553087300021, 
-            "lon": 110.82073100556183
+       },
+       {
+         "username":  "rider8",
+        "coord": {
+                "lat": -7.5603675519267055,
+                "lon": 110.76770911286172
+            }
+         },
+         {
+         "username":"rider9",
+         "coord": {
+            "lat": -7.740690926169796, 
+            "lon": 110.37411440130444
+         }   
         },
-        "driver2": {
-            "lat": -7.571130061786068,
-            "lon":  110.80391906353825
+        {
+            "username": "rider10",
+            "coord": {
+                "lat": -7.559722706161821,
+                "lon": 110.85641658202763
+            }
+        } ,
+        {
+            "username":"rider11",
+            "coord": {
+                "lat": -7.516093248544381,
+                "lon": 110.75452445432569
+            }
         },
-        "driver3": {
-            "lat": -7.782514997952533, 
-            "lon": 110.36659498380173
+        {
+            "username": "riderSolo",
+            "coord": {
+                "lat": -7.554605287475889, 
+                "lon": 110.82704286671313
+            }
         },
-        "driver4": {
-            "lat": -7.781478644687624,
-            "lon":  110.37267965620099
-        },
-        "driver5": {
-            "lat": -7.772515329567074, 
-            "lon": 110.37239634189628
-        },
-        "driver6": {
-            "lat": -7.755970087727186,
-            "lon": 110.37634415191656
-        },
-        "driver7": {
-            "lat": -7.764707027042284,
-            "lon":  110.39259158173417
+        {
+            "username": "riderSolo2",
+            "coord": {
+                "lat": -7.572505106627924, 
+                "lon": 110.84027742738219
+            }
         }
-    }
+    ],
+     "driver_lat_lon": [
+        {
+            "username":    "driversolo3",
+            "coord": {
+                "lat": -7.573553087300021, 
+                "lon": 110.82073100556183
+            }
+        }, 
+        {
+            "username": "driver2",
+            "coord": {
+                "lat": -7.571130061786068,
+            "lon":  110.80391906353825
+            }
+        },
+        {
+            "username":"driver3",
+            "coord":{
+                "lat": -7.782514997952533, 
+                "lon": 110.36659498380173
+            }
+        },
+        {
+            "username":  "driver4",
+            "coord": {
+                "lat": -7.781478644687624,
+                "lon":  110.37267965620099
+            }
+        },
+        {
+            "username": "driver5",
+            "coord": {
+                "lat": -7.772515329567074, 
+                "lon": 110.37239634189628
+            }
+        },
+        {
+            "username": "driver6",
+            "coord": {
+                "lat": -7.755970087727186,
+                "lon": 110.37634415191656
+            }
+        },
+        {
+            "username":   "driver7",
+            "coord": {
+                "lat": -7.764707027042284,
+                "lon":  110.39259158173417
+            }
+        },
+        {
+            "username":  "driver8",
+            "coord": {
+                "lat": -7.565565153230303, 
+                "lon": 110.8079927641968
+            }
+        },
+        {
+            "username":  "driver9",
+            "coord": {
+            "lat": -7.751209845539939, 
+             "lon": 110.41778895149984
+            }
+        },
+        {
+            "username": "driverSolo",
+            "coord": {
+                "lat": -7.565093613983397, 
+                "lon": 110.81882158435778
+            }
+        },
+        {
+            "username": "driverSolo2",
+            "coord": {
+                "lat": -7.572505106632021, 
+                "lon":110.83008101439083
+            }
+        }
+
+     
+    ]
 }'
 
 3. The response is the most optimal rider-driver pairs based on proximity (estimated arrival time from driver to rider). Solved using the Hungarian algorithm.

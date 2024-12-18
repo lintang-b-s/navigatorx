@@ -26,3 +26,7 @@ prome.txt
 
 cpu.txt
 
+*.svg
+*.pl
+*.graph
+
